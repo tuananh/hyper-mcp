@@ -1,0 +1,12 @@
+{
+  "plugins": [
+    {
+      "name": "qr-code",
+      "path": "oci://ttl.sh/tuananh/qr-code:3h"
+    },
+    {
+      "name": "time",
+      "path": "./wasm/time.wasm"
+    }
+  ]
+}
