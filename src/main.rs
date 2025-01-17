@@ -77,7 +77,7 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or_else(|| PathBuf::from("mcp.json"));
 
     let config_path = cli.config_file.unwrap_or(default_config_path);
-
+    info!("using config_file at {}", config_path.display());
     let config: Config = {
         let config_content = tokio::fs::read_to_string(&config_path).await.map_err(|e| {
             error!("Failed to read config file at {:?}: {}", config_path, e);
