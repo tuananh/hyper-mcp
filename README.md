@@ -8,16 +8,20 @@
 
 ## Overview
 
-hyper-mcp enables you to create and run MCP plugins in any programming language that compiles to WebAssembly. It integrates seamlessly with OCI registries for distribution and works with popular MCP-compatible applications like Claude Desktop and Cursor IDE.
+`hyper-mcp` is a powerful MCP server that leverages WebAssembly plugins to extend its capabilities. At its core, it's a single, extensible MCP server that you can enhance with plugins written in any WebAssembly-compatible programming language. Think of it as a modular toolkit where each plugin adds new functionality without the overhead of running multiple MCP servers.
+
+Whether you're using Claude Desktop, Cursor IDE, or any other MCP-compatible application, `hyper-mcp` seamlessly integrates with your workflow while using standard OCI registries for plugin distribution.
 
 ## Why hyper-mcp?
 
 ### WebAssembly-First
+
 - Easy local runtime embedding
 - First-class support in many programming languages
 - Leverages Extism's PDKs for simplified plugin development
 
 ### OCI Registry Integration
+
 - Uses existing container infrastructure
 - Familiar packaging workflow with Dockerfiles
 - Enables self-hosting for enterprise environments
