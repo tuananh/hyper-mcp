@@ -6,98 +6,102 @@
   <img src="./assets/ai.jpg" style="height: 300px;">
 </p>
 
-## Goals & Features
+## Overview
 
-- Build `hyper-mcp` plugins in any language you want, as long as they can compile to WebAssembly.
-- Package using Dockerfile & publish `hyper-mcp` plugins to any OCI registry.
-- Use it with any MCP-compatible application, e.g., Claude Desktop, Cursor IDE.
-- Want to add new tools, just edit config file and restart the MCP server. Maybe we can build a registry later so that everyone can publish & discover tools from other people.
+hyper-mcp enables you to create and run MCP plugins in any programming language that compiles to WebAssembly. It integrates seamlessly with OCI registries for distribution and works with popular MCP-compatible applications like Claude Desktop and Cursor IDE.
 
-## Design Decisions
+## Why hyper-mcp?
 
-I admire Extism and Dylibso but have differing opinions on a few aspects:
+### WebAssembly-First
+- Easy local runtime embedding
+- First-class support in many programming languages
+- Leverages Extism's PDKs for simplified plugin development
 
-- I prefer not to use a custom registry (like XTP) when we already have the OCI registry.
-- Requiring an account with `mcp.run` to obtain an `MCP_SESSION_ID` just to run an MCP isn't user-friendly.
+### OCI Registry Integration
+- Uses existing container infrastructure
+- Familiar packaging workflow with Dockerfiles
+- Enables self-hosting for enterprise environments
 
-### Why WebAssembly?
+## Key Features
 
-- WebAssembly runtimes are easy to embed locally.
-- WebAssembly is becoming first-class in many languages, allowing development in any language that supports a Wasm target.
-- Projects like [Extism](https://github.com/extism/extism) simplify packaging code into plugins with their PDKs. They support a variety of languages, including Rust, JS, Go, .NET, C, and Zig.
+- **Language Agnostic**: Build plugins in any language that compiles to WebAssembly
+- **Simple Distribution**: Package plugins using Dockerfile and publish to any OCI registry
+- **Universal Compatibility**: Works with any MCP-compatible application
+- **Easy Configuration**: Add new tools by simply editing a config file and restarting the MCP server
 
-### Why OCI Registry?
+## Quick Start
 
-- Avoid building yet another registry while leveraging existing infrastructure.
-- Utilize existing tooling for packaging. Users can simply use a `Dockerfile` to package `hyper-mcp` plugins.
-- Self-hosting is possible, eliminating the need to whitelist additional endpoints for corporate users.
+1. Create a configuration file at `$HOME/.config/mcp.json`:
 
-## Usage
+```json
+{
+  "plugins": [
+    {
+      "name": "time",
+      "path": "/home/anh/Code/hyper-mcp/wasm/time.wasm"
+    },
+    {
+      "name": "qr-code",
+      "path": "oci://ghcr.io/tuananh/qrcode-plugin:latest"
+    },
+    {
+      "name": "hash",
+      "path": "oci://ghcr.io/tuananh/hash-plugin:latest"
+    }
+  ]
+}
+```
 
-1. Create an example configuration file at `$HOME/.config/mcp.json`:
+The `path` can be:
+- A local file path
+- An HTTP URL
+- An OCI image reference
 
-  ```json
-  {
-    "plugins": [
-      {
-        "name": "time",
-        "path": "/home/anh/Code/hyper-mcp/wasm/time.wasm"
-      },
-      {
-        "name": "qr-code",
-        "path": "oci://ghcr.io/tuananh/qrcode-plugin:latest"
-      },
-      {
-        "name": "hash",
-        "path": "oci://ghcr.io/tuananh/hash-plugin:latest"
-      }
-    ]
-  }
-  ```
-
-`path` can be an HTTP URL, an OCI image or a local file.
-
-2. Run it
+2. Start the server:
 
 ```sh
 $ hyper-mcp
 ```
 
-## Configure Claude Desktop to use hyper-mcp
+## Integration Guides
 
-To be updated. I'm using Linux so I can't test it yet but it should work.
+### Cursor IDE Integration
 
-## Configure Cursor to use hyper-mcp
+1. Configure Cursor to use hyper-mcp:
 
 ![cursor mcp](./assets/cursor-mcp.png)
 
-And then you can use the tools from Cursor's chat UI.
+2. Access tools through Cursor's chat UI:
 
 ![cursor mcp chat](./assets/cursor-mcp-1.png)
 
-## How to build plugin
+### Claude Desktop Integration
 
-Plugins are taken directly from mcp.run examples as I use Dylibso's Extism project. There is just a tiny bit different on how I decide on packaging & publishing as we use OCI registry here.
+Documentation coming soon for Windows/macOS users.
 
-The source code for [qrcode plugin here](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/qr-code) & [hash plugin here](https://github.com/tuananh/hyper-mcp-hash-plugin).
+## Building Plugins
 
-## Publish hyper-mcp plugin to OCI registry
+hyper-mcp uses [Extism](https://github.com/extism/extism) for plugin development. Check out our example plugins:
+- [QR Code Plugin](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/qr-code)
+- [Hash Plugin](https://github.com/tuananh/hyper-mcp-hash-plugin)
 
-This is just easy as
+### Publishing Plugins
 
-```sh
-docker build ...
-docker push
-```
+Publishing a plugin to an OCI registry is straightforward:
 
-We expect there will be a `plugin.wasm` file at root `/`. So once you built the artifact, just use `scratch` image and copy the artifact over to `/`
+1. Build your WebAssembly plugin
+2. Create a Dockerfile:
 
 ```dockerfile
-# build wasm ....
-
 FROM scratch
 WORKDIR /
-COPY --from=builder /workspace/target/wasm32-wasip1/release/qrcode.wasm /plugin.wasm
+COPY --from=builder /workspace/target/wasm32-wasip1/release/your-plugin.wasm /plugin.wasm
+```
+
+3. Build and push:
+```sh
+docker build -t your-registry/plugin-name .
+docker push your-registry/plugin-name
 ```
 
 ## License
