@@ -56,8 +56,6 @@ I admire Extism and Dylibso but have differing opinions on a few aspects:
 
 `path` can be an HTTP URL, an OCI image or a local file.
 
-The source code for [qrcode plugin here](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/qr-code) & [hash plugin here](https://github.com/tuananh/hyper-mcp-hash-plugin)
-
 2. Run it
 
 ```sh
@@ -66,7 +64,7 @@ $ hyper-mcp
 
 ## Configure Claude Desktop to use hyper-mcp
 
-To be updated
+To be updated. I'm using Linux so I can't test it yet but it should work.
 
 ## Configure Cursor to use hyper-mcp
 
@@ -80,7 +78,7 @@ And then you can use the tools from Cursor's chat UI.
 
 Plugins are taken directly from mcp.run examples as I use Dylibso's Extism project. There is just a tiny bit different on how I decide on packaging & publishing as we use OCI registry here.
 
-See [examples/plugins](./examples/plugins) for some of the example plugins in Rust.
+The source code for [qrcode plugin here](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/qr-code) & [hash plugin here](https://github.com/tuananh/hyper-mcp-hash-plugin).
 
 ## Publish hyper-mcp plugin to OCI registry
 
