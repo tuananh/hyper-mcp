@@ -72,6 +72,10 @@ To be updated
 
 ![cursor mcp](./assets/cursor-mcp.png)
 
+And then you can use the tools from Cursor's chat UI.
+
+![cursor mcp chat](./assets/cursor-mcp-1.png)
+
 ## How to build plugin
 
 Plugins are taken directly from mcp.run examples as I use Dylibso's Extism project. There is just a tiny bit different on how I decide on packaging & publishing as we use OCI registry here.
