@@ -1,12 +1,13 @@
 use flate2::read::GzDecoder;
-use oci_distribution::Reference;
-use reqwest;
+use oci_client::Reference;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::Read;
 use std::path::Path;
 use tar::Archive;
 use tracing::info;
+use oci_client::{manifest, manifest::OciDescriptor, secrets::RegistryAuth, Client};
+use docker_credential::{CredentialRetrievalError, DockerCredential};
 
 // Docker manifest format v2
 #[derive(Debug, Serialize, Deserialize)]
@@ -35,7 +36,31 @@ struct DockerManifestLayer {
     digest: String,
 }
 
-// TODO: should we use https://github.com/bytecodealliance/wasm-pkg-tools for packaging?
+fn build_auth(reference: &Reference) -> RegistryAuth {
+    let server = reference
+        .resolve_registry()
+        .strip_suffix('/')
+        .unwrap_or_else(|| reference.resolve_registry());
+
+    // if cli.anonymous {
+    //     return RegistryAuth::Anonymous;
+    // }
+
+    match docker_credential::get_credential(server) {
+        Err(CredentialRetrievalError::ConfigNotFound) => RegistryAuth::Anonymous,
+        Err(CredentialRetrievalError::NoCredentialConfigured) => RegistryAuth::Anonymous,
+        Err(e) => panic!("Error handling docker configuration file: {}", e),
+        Ok(DockerCredential::UsernamePassword(username, password)) => {
+            info!("Found docker credentials");
+            RegistryAuth::Basic(username, password)
+        }
+        Ok(DockerCredential::IdentityToken(_)) => {
+            info!("Cannot use contents of docker config, identity token not supported. Using anonymous auth");
+            RegistryAuth::Anonymous
+        }
+    }
+}
+
 pub async fn pull_and_extract_oci_image(
     image_reference: &str,
     target_file_path: &str,
@@ -51,43 +76,28 @@ pub async fn pull_and_extract_oci_image(
 
     info!("Pulling {} ...", image_reference);
 
+    let client_config = oci_client::client::ClientConfig::default();
+    let client = Client::new(client_config);
+
     let reference = Reference::try_from(image_reference)?;
+    let auth = build_auth(&reference);
 
-    let client = reqwest::Client::new();
-    let manifest_url = format!(
-        "https://{}/v2/{}/manifests/{}",
-        reference.registry(),
-        reference.repository(),
-        reference.tag().unwrap_or("latest")
-    );
-
-    info!("Fetching manifest from: {}", manifest_url);
-    let manifest_response = client
-        .get(&manifest_url)
-        .header(
-            "Accept",
-            // Request both Docker and OCI manifest formats
-            "application/vnd.docker.distribution.manifest.v2+json, \
-             application/vnd.oci.image.manifest.v1+json",
-        )
-        .send()
-        .await?;
-
-    let manifest: DockerManifest = manifest_response.json().await?;
-    info!("Manifest fetched successfully");
+    // Accept both OCI and Docker manifest types
+    let manifest = client.pull(&reference, &auth, vec![
+        manifest::IMAGE_MANIFEST_MEDIA_TYPE,
+        manifest::IMAGE_DOCKER_LAYER_GZIP_MEDIA_TYPE,
+    ]).await?;
 
     for (_i, layer) in manifest.layers.iter().enumerate() {
-        let blob_url = format!(
-            "https://{}/v2/{}/blobs/{}",
-            reference.registry(),
-            reference.repository(),
-            layer.digest
-        );
+        let mut buf = Vec::new();
+        let desc = OciDescriptor { 
+            digest: layer.sha256_digest().clone(),
+            media_type: "application/vnd.docker.image.rootfs.diff.tar.gzip".to_string(),
+            ..Default::default() 
+        };
+        let _ = client.pull_blob(&reference, &desc, &mut buf).await.unwrap();
 
-        let response = client.get(&blob_url).send().await?;
-        let bytes = response.bytes().await?;
-
-        let gz_extract = GzDecoder::new(&bytes[..]);
+        let gz_extract = GzDecoder::new(&buf[..]);
         let mut archive_extract = Archive::new(gz_extract);
 
         for entry_result in archive_extract.entries()? {
@@ -95,8 +105,7 @@ pub async fn pull_and_extract_oci_image(
                 Ok(mut entry) => {
                     if let Ok(path) = entry.path() {
                         let path_str = path.to_string_lossy();
-                        if path_str.ends_with(target_file_path) || path_str.ends_with("plugin.wasm")
-                        {
+                        if path_str.ends_with(target_file_path) || path_str.ends_with("plugin.wasm") {
                             if let Some(parent) = Path::new(local_output_path).parent() {
                                 fs::create_dir_all(parent)?;
                             }
