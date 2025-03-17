@@ -56,6 +56,8 @@ I admire Extism and Dylibso but have differing opinions on a few aspects:
 
 `path` can be an HTTP URL, an OCI image or a local file.
 
+The source code for [qrcode plugin here](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/qr-code) & [hash plugin here](https://github.com/tuananh/hyper-mcp-hash-plugin)
+
 2. Run it
 
 ```sh
