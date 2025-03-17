@@ -10,7 +10,7 @@
 
 - Build `hyper-mcp` plugins in any language you want, as long as they can compile to WebAssembly.
 - Package using Dockerfile & publish `hyper-mcp` plugins to any OCI registry.
-- Use it with any MCP-compatible application, e.g., Claude Desktop.
+- Use it with any MCP-compatible application, e.g., Claude Desktop, Cursor IDE.
 
 ## Design Decisions
 
@@ -61,6 +61,10 @@ $ hyper-mcp
 ## Configure Claude Desktop to use hyper-mcp
 
 To be updated
+
+## Configure Cursor to use hyper-mcp
+
+![cursor mcp](./assets/cursor-mcp.png)
 
 ## How to build plugin
 
