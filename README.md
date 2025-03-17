@@ -39,12 +39,16 @@ I admire Extism and Dylibso but have differing opinions on a few aspects:
   {
     "plugins": [
       {
-        "name": "qr-code",
-        "path": "oci://ttl.sh/tuananh/qr-code:3h"
+        "name": "time",
+        "path": "/home/anh/Code/hyper-mcp/wasm/time.wasm"
       },
       {
-        "name": "time",
-        "path": "./wasm/time.wasm"
+        "name": "qr-code",
+        "path": "oci://ghcr.io/tuananh/qrcode-plugin:latest"
+      },
+      {
+        "name": "hash",
+        "path": "oci://ghcr.io/tuananh/hash-plugin:latest"
       }
     ]
   }
