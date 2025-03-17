@@ -6,11 +6,12 @@
   <img src="./assets/ai.jpg" style="height: 300px;">
 </p>
 
-## Features
+## Goals & Features
 
 - Build `hyper-mcp` plugins in any language you want, as long as they can compile to WebAssembly.
 - Package using Dockerfile & publish `hyper-mcp` plugins to any OCI registry.
 - Use it with any MCP-compatible application, e.g., Claude Desktop, Cursor IDE.
+- Want to add new tools, just edit config file and restart the MCP server. Maybe we can build a registry later so that everyone can publish & discover tools from other people.
 
 ## Design Decisions
 
