@@ -2,6 +2,8 @@
 
 A example `hyper-mcp` plugin that can perform tasks with browser.
 
+Looks like WASI doesn't support WebSocket yet so it's no go for now.
+
 ## Usage
 
 ```json
