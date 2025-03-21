@@ -87,7 +87,7 @@ Documentation coming soon for Windows/macOS users.
 
 hyper-mcp uses [Extism](https://github.com/extism/extism) for plugin development. Check out our example plugins:
 - [QR Code Plugin](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/qr-code)
-- [Hash Plugin](https://github.com/tuananh/hyper-mcp-hash-plugin)
+- [Hash Plugin](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/hash)
 
 ### Publishing Plugins
 
