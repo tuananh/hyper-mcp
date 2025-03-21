@@ -52,9 +52,15 @@ struct Config {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+struct RuntimeConfig {
+    allowed_host: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 struct PluginConfig {
     name: String,
     path: String,
+    runtime_config: Option<RuntimeConfig>,
 }
 
 #[derive(Clone, RpcResource)]
@@ -117,7 +123,13 @@ async fn main() -> anyhow::Result<()> {
             tokio::fs::read(&plugin_cfg.path).await?
         };
 
-        let manifest = Manifest::new([Wasm::data(wasm_content)]);
+        let mut manifest = Manifest::new([Wasm::data(wasm_content)]);
+        if let Some(runtime_cfg) = &plugin_cfg.runtime_config {
+            info!("runtime_cfg: {:?}", runtime_cfg);
+            if let Some(host) = &runtime_cfg.allowed_host {
+                manifest = manifest.with_allowed_host(host);
+            }
+        }
         let plugin = Plugin::new(&manifest, [], true).unwrap();
 
         plugins
