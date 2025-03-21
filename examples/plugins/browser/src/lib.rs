@@ -15,23 +15,15 @@ pub(crate) fn call(input: CallToolRequest) -> Result<CallToolResult, Error> {
         .and_then(|v| v.as_str())
         .ok_or_else(|| Error::msg("URL parameter is required"))?;
 
-    // Get CDP endpoint from config
-    let browser = if let Ok(Some(cdp_url)) = config::get("CHROME_CDP_URL") {
-        info!("Connecting to CDP endpoint: {}", cdp_url);
-        Browser::connect(cdp_url)
-            .map_err(|e| Error::msg(format!("Failed to connect to CDP endpoint: {}", e)))?
-    } else {
-        info!("No CDP endpoint provided, launching a new browser instance");
-        // Fallback to launching a new browser instance if CDP URL is not provided
-        let options = LaunchOptionsBuilder::default()
-            .headless(true)
-            .sandbox(false)
-            .build()
-            .map_err(|e| Error::msg(format!("Failed to build browser options: {}", e)))?;
+    // Get CDP endpoint from config - panic if not found since we can't launch Chrome in WASM
+    let cdp_url = config::get("CHROME_CDP_URL")
+        .map_err(|_| Error::msg("Failed to read CHROME_CDP_URL from config"))?
+        .ok_or_else(|| Error::msg("CHROME_CDP_URL is required"))?;
 
-        Browser::new(options)
-            .map_err(|e| Error::msg(format!("Failed to launch browser: {}", e)))?
-    };
+    info!("Connecting to CDP endpoint: {}", cdp_url);
+    
+    let browser = Browser::connect(cdp_url)
+        .map_err(|e| Error::msg(format!("Failed to connect to CDP endpoint: {}", e)))?;
 
     // Create a new tab and navigate to URL
     let tab = browser.new_tab()
