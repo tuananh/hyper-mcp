@@ -24,6 +24,9 @@ time:
 ip:
     echo '{ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": "whatsmyip", "arguments": { "foo": "bar" } } }' | {{hyper_mcp_bin}}
 
+browser:
+    echo '{ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": "browser", "arguments": { "url": "https://en.wikipedia.org/wiki/Ada_Lovelace" } } }' | RUST_LOG=debug {{hyper_mcp_bin}}
+
 debug:
     npx @modelcontextprotocol/inspector {{hyper_mcp_bin}} --config-file ~/.config/mcp.json
 

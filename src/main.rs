@@ -53,6 +53,7 @@ struct Config {
 #[derive(Debug, Serialize, Deserialize)]
 struct RuntimeConfig {
     allowed_host: Option<String>,
+    config: Option<HashMap<String, String>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -123,12 +124,19 @@ async fn main() -> anyhow::Result<()> {
         };
 
         let mut manifest = Manifest::new([Wasm::data(wasm_content)]);
+        
         if let Some(runtime_cfg) = &plugin_cfg.runtime_config {
             info!("runtime_cfg: {:?}", runtime_cfg);
             if let Some(host) = &runtime_cfg.allowed_host {
                 manifest = manifest.with_allowed_host(host);
             }
+            
+            // Pass configuration to plugin
+            if let Some(config) = &runtime_cfg.config {
+                manifest = manifest.with_config(config.iter().map(|(k, v)| (k.clone(), v.clone())));
+            }
         }
+        
         let plugin = Plugin::new(&manifest, [], true).unwrap();
 
         plugins
