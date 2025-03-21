@@ -49,7 +49,7 @@ base64_serde_type!(Base64Standard, base64::engine::general_purpose::STANDARD);
 mod exports {
     use super::*;
 
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     pub extern "C" fn call() -> i32 {
         let ret =
             crate::call(try_input_json!()).and_then(|x| extism_pdk::output(extism_pdk::Json(x)));
@@ -60,7 +60,7 @@ mod exports {
         }
     }
 
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     pub extern "C" fn describe() -> i32 {
         let ret = crate::describe().and_then(|x| extism_pdk::output(extism_pdk::Json(x)));
 

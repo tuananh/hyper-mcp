@@ -1,4 +1,4 @@
-FROM rust:1.81-slim AS builder
+FROM rust:1.85-slim AS builder
 
 RUN rustup target add wasm32-wasip1 && \
     rustup component add rust-std --target wasm32-wasip1
