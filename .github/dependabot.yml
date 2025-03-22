@@ -17,13 +17,6 @@ updates:
       dependencies:
         patterns:
           - "*"
-    # Enforce pinning to commit hashes
-    versioning-strategy: "pin"
-    # Only update to releases
-    allow:
-      - dependency-type: "direct"
-        update-type: "version-update:semver-patch"
-        versioning-strategy: "pin"
 
   # Enable version updates for Rust
   - package-ecosystem: "cargo"
