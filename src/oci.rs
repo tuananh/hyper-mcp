@@ -1,13 +1,13 @@
+use docker_credential::{CredentialRetrievalError, DockerCredential};
 use flate2::read::GzDecoder;
 use oci_client::Reference;
+use oci_client::{Client, manifest, manifest::OciDescriptor, secrets::RegistryAuth};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::Read;
 use std::path::Path;
 use tar::Archive;
 use tracing::info;
-use oci_client::{manifest, manifest::OciDescriptor, secrets::RegistryAuth, Client};
-use docker_credential::{CredentialRetrievalError, DockerCredential};
 
 // Docker manifest format v2
 #[derive(Debug, Serialize, Deserialize)]
@@ -55,7 +55,9 @@ fn build_auth(reference: &Reference) -> RegistryAuth {
             RegistryAuth::Basic(username, password)
         }
         Ok(DockerCredential::IdentityToken(_)) => {
-            info!("Cannot use contents of docker config, identity token not supported. Using anonymous auth");
+            info!(
+                "Cannot use contents of docker config, identity token not supported. Using anonymous auth"
+            );
             RegistryAuth::Anonymous
         }
     }
@@ -83,19 +85,25 @@ pub async fn pull_and_extract_oci_image(
     let auth = build_auth(&reference);
 
     // Accept both OCI and Docker manifest types
-    let manifest = client.pull(&reference, &auth, vec![
-        manifest::IMAGE_MANIFEST_MEDIA_TYPE,
-        manifest::IMAGE_DOCKER_LAYER_GZIP_MEDIA_TYPE,
-    ]).await?;
+    let manifest = client
+        .pull(
+            &reference,
+            &auth,
+            vec![
+                manifest::IMAGE_MANIFEST_MEDIA_TYPE,
+                manifest::IMAGE_DOCKER_LAYER_GZIP_MEDIA_TYPE,
+            ],
+        )
+        .await?;
 
-    for (_i, layer) in manifest.layers.iter().enumerate() {
+    for layer in manifest.layers.iter() {
         let mut buf = Vec::new();
-        let desc = OciDescriptor { 
+        let desc = OciDescriptor {
             digest: layer.sha256_digest().clone(),
             media_type: "application/vnd.docker.image.rootfs.diff.tar.gzip".to_string(),
-            ..Default::default() 
+            ..Default::default()
         };
-        let _ = client.pull_blob(&reference, &desc, &mut buf).await.unwrap();
+        client.pull_blob(&reference, &desc, &mut buf).await.unwrap();
 
         let gz_extract = GzDecoder::new(&buf[..]);
         let mut archive_extract = Archive::new(gz_extract);
@@ -105,7 +113,8 @@ pub async fn pull_and_extract_oci_image(
                 Ok(mut entry) => {
                     if let Ok(path) = entry.path() {
                         let path_str = path.to_string_lossy();
-                        if path_str.ends_with(target_file_path) || path_str.ends_with("plugin.wasm") {
+                        if path_str.ends_with(target_file_path) || path_str.ends_with("plugin.wasm")
+                        {
                             if let Some(parent) = Path::new(local_output_path).parent() {
                                 fs::create_dir_all(parent)?;
                             }

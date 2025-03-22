@@ -1,4 +1,3 @@
-use dirs;
 use extism::*;
 use extism::{Manifest, Wasm};
 use rpc_router::{
@@ -21,9 +20,9 @@ mod resources;
 mod tools;
 mod types;
 
+use r#mod::*;
 use oci::*;
 use prompts::{prompts_get, prompts_list};
-use r#mod::*;
 use resources::{resource_read, resources_list};
 use tools::{tools_call, tools_list};
 use types::*;
@@ -145,7 +144,6 @@ async fn main() -> anyhow::Result<()> {
     let input = io::stdin();
     let mut line = String::new();
     let mut logging_file = OpenOptions::new()
-        .write(true)
         .create(true)
         .append(true)
         .open(cli.log_file)

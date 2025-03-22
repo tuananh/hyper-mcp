@@ -41,7 +41,7 @@ pub async fn tools_call(
     let json_string = serde_json::to_string(&wrapped).expect("Failed to serialize request");
     if let Some(plugin) = plugins.get_mut(plugin_name) {
         match plugin.call::<&str, &str>("call", &json_string) {
-            Ok(result) => match serde_json::from_str::<CallToolResult>(&result) {
+            Ok(result) => match serde_json::from_str::<CallToolResult>(result) {
                 Ok(parsed) => Ok(parsed),
                 Err(e) => {
                     error!(

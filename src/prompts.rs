@@ -48,7 +48,7 @@ pub async fn prompts_get(request: GetPromptRequest) -> HandlerResult<PromptResul
             }]),
         },
         _ => {
-            return Err(json!({"code": -32602, "message": "Prompt not found"}).into_handler_error())
+            return Err(json!({"code": -32602, "message": "Prompt not found"}).into_handler_error());
         }
     };
     Ok(response)

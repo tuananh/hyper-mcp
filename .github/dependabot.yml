@@ -1,0 +1,44 @@
+version: 2
+updates:
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "github-actions"
+      include: "scope"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
+    # Enforce pinning to commit hashes
+    versioning-strategy: "pin"
+    # Only update to releases
+    allow:
+      - dependency-type: "direct"
+        update-type: "version-update:semver-patch"
+        versioning-strategy: "pin"
+
+  # Enable version updates for Rust
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "rust"
+    commit-message:
+      prefix: "rust"
+      include: "scope"
+    groups:
+      dependencies:
+        patterns:
+          - "*" 
