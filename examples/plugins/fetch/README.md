@@ -12,12 +12,20 @@ Takes a URL, fetches the page content, strips out scripts and styles, and conver
 ## Usage
 
 Call with:
-```typescript
+```json
 {
-  arguments: {
-    url: "https://example.com"  // Required: URL to fetch
-  }
+  "plugins": [
+    // {},
+    {
+      "name": "fetch",
+      "path": "oci://ghcr.io/tuananh/fetch-plugin:latest",
+      "runtime_config": {
+        "allowed_host": "*"
+      }
+    }
+  ]
 }
+
 ```
 
 Returns the page content converted to markdown format.
