@@ -42,7 +42,7 @@ Whether you're using Claude Desktop, Cursor IDE, or any other MCP-compatible app
   "plugins": [
     {
       "name": "time",
-      "path": "/home/anh/Code/hyper-mcp/wasm/time.wasm"
+      "path": "oci://ghcr.io/tuananh/time-plugin:latest"
     },
     {
       "name": "qr-code",
@@ -51,9 +51,24 @@ Whether you're using Claude Desktop, Cursor IDE, or any other MCP-compatible app
     {
       "name": "hash",
       "path": "oci://ghcr.io/tuananh/hash-plugin:latest"
+    },
+    {
+      "name": "myip",
+      "path": "oci://ghcr.io/tuananh/myip-plugin:latest",
+      "runtime_config": {
+        "allowed_host": "1.1.1.1"
+      }
+    },
+    {
+      "name": "fetch",
+      "path": "oci://ghcr.io/tuananh/fetch-plugin:latest",
+      "runtime_config": {
+        "allowed_host": "*"
+      }
     }
   ]
 }
+
 ```
 
 The `path` can be:
@@ -86,8 +101,10 @@ Documentation coming soon for Windows/macOS users.
 ## Building Plugins
 
 hyper-mcp uses [Extism](https://github.com/extism/extism) for plugin development. Check out our example plugins:
-- [QR Code plugin](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/qr-code)
-- [Hash plugin](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/hash)
+
+- [Time plugin](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/time): Simplest plugin that allow you to ask LLM what time is it now.
+- [QR Code plugin](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/qr-code): Generate QR image.
+- [Hash plugin](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/hash): Generate all kind of hashes for you.
 - [My IP plugin](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/myip): An example how to do HTTP request with `hyper-mcp`.
 - [Fetch plugin](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/fetch): An example how to fetch basic webpages. No full browser capability yet.
 
