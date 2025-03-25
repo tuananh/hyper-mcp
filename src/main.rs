@@ -39,10 +39,9 @@ struct Cli {
     #[arg(
         short,
         long,
-        default_value = "/tmp/hyper-mcp.jsonl",
         value_name = "LOG_FILE"
     )]
-    log_file: PathBuf,
+    log_file: Option<PathBuf>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -79,7 +78,7 @@ async fn main() -> anyhow::Result<()> {
             path.push("mcp.json");
             path
         })
-        .unwrap_or_else(|| PathBuf::from("mcp.json"));
+        .unwrap();
 
     let config_path = cli.config_file.unwrap_or(default_config_path);
     info!("using config_file at {}", config_path.display());
@@ -108,15 +107,24 @@ async fn main() -> anyhow::Result<()> {
             hasher.update(image_reference);
             let hash = hasher.finalize();
             let short_hash = &hex::encode(hash)[..7];
-            let local_output_path = format!("/tmp/{}-{}.wasm", plugin_cfg.name, short_hash);
+            let cache_dir = dirs::cache_dir()
+                .map(|mut path| {
+                    path.push("mcp");
+                    path
+                })
+                .unwrap();
+            std::fs::create_dir_all(&cache_dir)?;
+
+            let local_output_path = cache_dir.join(format!("{}-{}.wasm", plugin_cfg.name, short_hash));
+            let local_output_path = local_output_path.to_str().unwrap();
 
             if let Err(e) =
-                pull_and_extract_oci_image(image_reference, target_file_path, &local_output_path)
+                pull_and_extract_oci_image(image_reference, target_file_path, local_output_path)
                     .await
             {
                 eprintln!("Error pulling oci plugin: {}", e);
             }
-            info!("saved to : {}", local_output_path);
+            info!("cache plugin `{}` to : {}", plugin_cfg.name, local_output_path);
             tokio::fs::read(local_output_path).await?
         } else {
             tokio::fs::read(&plugin_cfg.path).await?
@@ -143,10 +151,24 @@ async fn main() -> anyhow::Result<()> {
     let rpc_router = build_rpc_router(plugins.clone());
     let input = io::stdin();
     let mut line = String::new();
+
+    let log_dir = dirs::data_local_dir()
+        .map(|mut path| {
+            path.push("mcp");
+            path.push("logs");
+            path
+        })
+        .unwrap();
+    
+    std::fs::create_dir_all(&log_dir)?;
+    
+    let default_log_file_path = log_dir.join("mcp.jsonl");
+    let log_file_path = cli.log_file.unwrap_or(default_log_file_path);
+    info!("using log_file at {}", log_file_path.display());
     let mut logging_file = OpenOptions::new()
         .create(true)
         .append(true)
-        .open(cli.log_file)
+        .open(log_file_path)
         .unwrap();
 
     while input.read_line(&mut line).unwrap() != 0 {
