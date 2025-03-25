@@ -36,11 +36,7 @@ struct Cli {
     #[arg(short, long, value_name = "FILE")]
     config_file: Option<PathBuf>,
 
-    #[arg(
-        short,
-        long,
-        value_name = "LOG_FILE"
-    )]
+    #[arg(short, long, value_name = "LOG_FILE")]
     log_file: Option<PathBuf>,
 }
 
@@ -115,7 +111,8 @@ async fn main() -> anyhow::Result<()> {
                 .unwrap();
             std::fs::create_dir_all(&cache_dir)?;
 
-            let local_output_path = cache_dir.join(format!("{}-{}.wasm", plugin_cfg.name, short_hash));
+            let local_output_path =
+                cache_dir.join(format!("{}-{}.wasm", plugin_cfg.name, short_hash));
             let local_output_path = local_output_path.to_str().unwrap();
 
             if let Err(e) =
@@ -124,7 +121,10 @@ async fn main() -> anyhow::Result<()> {
             {
                 eprintln!("Error pulling oci plugin: {}", e);
             }
-            info!("cache plugin `{}` to : {}", plugin_cfg.name, local_output_path);
+            info!(
+                "cache plugin `{}` to : {}",
+                plugin_cfg.name, local_output_path
+            );
             tokio::fs::read(local_output_path).await?
         } else {
             tokio::fs::read(&plugin_cfg.path).await?
@@ -159,9 +159,9 @@ async fn main() -> anyhow::Result<()> {
             path
         })
         .unwrap();
-    
+
     std::fs::create_dir_all(&log_dir)?;
-    
+
     let default_log_file_path = log_dir.join("mcp.jsonl");
     let log_file_path = cli.log_file.unwrap_or(default_log_file_path);
     info!("using log_file at {}", log_file_path.display());
