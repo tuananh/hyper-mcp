@@ -71,10 +71,15 @@ async fn main() -> anyhow::Result<()> {
     // Get default config path in the user's config directory
     let default_config_path = dirs::config_dir()
         .map(|mut path| {
-            path.push("mcp.json");
+            path.push("hyper-mcp");
+            path.push("config.json");
             path
         })
         .unwrap();
+
+    if let Some(parent) = default_config_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
 
     let config_path = cli.config_file.unwrap_or(default_config_path);
     info!("using config_file at {}", config_path.display());
@@ -105,7 +110,7 @@ async fn main() -> anyhow::Result<()> {
             let short_hash = &hex::encode(hash)[..7];
             let cache_dir = dirs::cache_dir()
                 .map(|mut path| {
-                    path.push("mcp");
+                    path.push("hyper-mcp");
                     path
                 })
                 .unwrap();
@@ -154,7 +159,7 @@ async fn main() -> anyhow::Result<()> {
 
     let log_dir = dirs::data_local_dir()
         .map(|mut path| {
-            path.push("mcp");
+            path.push("hyper-mcp");
             path.push("logs");
             path
         })

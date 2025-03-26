@@ -35,7 +35,7 @@ Whether you're using Claude Desktop, Cursor IDE, or any other MCP-compatible app
 
 ## Quick Start
 
-1. Create a configuration file at `$HOME/.config/mcp.json`:
+1. Create a configuration file at `$HOME/.config/hyper-mcp/config.json`:
 
 ```json
 {

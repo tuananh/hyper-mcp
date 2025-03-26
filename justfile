@@ -25,7 +25,7 @@ ip:
     echo '{ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": "whatsmyip", "arguments": { "foo": "bar" } } }' | {{hyper_mcp_bin}}
 
 debug:
-    npx @modelcontextprotocol/inspector {{hyper_mcp_bin}} --config-file ~/.config/mcp.json
+    npx @modelcontextprotocol/inspector {{hyper_mcp_bin}} --config-file ~/.config/hyper-mcp/config.json
 
 run:
     cargo run
