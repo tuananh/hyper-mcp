@@ -1,0 +1,63 @@
+name: Nightly Release
+
+on:
+  schedule:
+    - cron: '0 17 * * *' # midnight GMT+7
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Install compilation targets
+        run: |
+          rustup target add x86_64-unknown-linux-gnu
+
+      - name: Build for AMD64
+        run: cargo build --release --target x86_64-unknown-linux-gnu
+
+      # TODO: figure out how to do cross build
+
+      - name: Create archives and checksums
+        run: |
+          # Create directories for archives
+          mkdir -p dist/amd64
+          
+          cp target/x86_64-unknown-linux-gnu/release/hyper-mcp dist/amd64/
+          cd dist/amd64 && tar -czf ../hyper-mcp-linux-amd64.tar.gz hyper-mcp
+          cd ..
+          
+          {
+            echo "hyper-mcp-linux-amd64.tar.gz:"
+            sha256sum hyper-mcp-linux-amd64.tar.gz
+          } > checksums.txt
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: nightly
+          name: Nightly build
+          draft: false
+          prerelease: true
+          files: |
+            dist/hyper-mcp-linux-amd64.tar.gz
+            dist/checksums.txt
+          body: |
+            Nightly build from `main` branch.
