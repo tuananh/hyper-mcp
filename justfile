@@ -24,6 +24,9 @@ time:
 ip:
     echo '{ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": "whatsmyip", "arguments": { "foo": "bar" } } }' | {{hyper_mcp_bin}}
 
+crypto-price:
+    RUST_LOG=info echo '{ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": "crypto-price", "arguments": { "symbol": "ethereum" } } }' | {{hyper_mcp_bin}}
+
 debug:
     npx @modelcontextprotocol/inspector {{hyper_mcp_bin}} --config-file ~/.config/hyper-mcp/config.json
 

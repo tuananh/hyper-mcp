@@ -107,6 +107,7 @@ hyper-mcp uses [Extism](https://github.com/extism/extism) for plugin development
 - [Hash plugin](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/hash): Generate all kind of hashes for you.
 - [My IP plugin](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/myip): An example how to do HTTP request with `hyper-mcp`.
 - [Fetch plugin](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/fetch): An example how to fetch basic webpages. No full browser capability yet.
+- [Crypto price plugin](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/crypto-price): An example of writing a plugin in Go.
 
 ### Publishing Plugins
 
