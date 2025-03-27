@@ -27,6 +27,12 @@ ip:
 crypto-price:
     RUST_LOG=info echo '{ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": "crypto-price", "arguments": { "symbol": "ethereum" } } }' | {{hyper_mcp_bin}}
 
+write-file:
+    RUST_LOG=info echo '{ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": "fs", "arguments": { "operation": "write_file", "path": "/tmp/test.txt", "content": "Hello, world!" } } }' | {{hyper_mcp_bin}}
+
+list-dir:
+    RUST_LOG=info echo '{ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": "fs", "arguments": { "operation": "list_dir", "path": "/tmp" } } }' | {{hyper_mcp_bin}}
+
 debug:
     npx @modelcontextprotocol/inspector {{hyper_mcp_bin}} --config-file ~/.config/hyper-mcp/config.json
 

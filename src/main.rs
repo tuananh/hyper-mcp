@@ -48,6 +48,7 @@ struct Config {
 #[derive(Debug, Serialize, Deserialize)]
 struct RuntimeConfig {
     allowed_host: Option<String>,
+    allowed_paths: Option<Vec<String>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -140,6 +141,12 @@ async fn main() -> anyhow::Result<()> {
             info!("runtime_cfg: {:?}", runtime_cfg);
             if let Some(host) = &runtime_cfg.allowed_host {
                 manifest = manifest.with_allowed_host(host);
+            }
+            if let Some(paths) = &runtime_cfg.allowed_paths {
+                for path in paths {
+                    // path will be available in the plugin with exact same path
+                    manifest = manifest.with_allowed_path(path.clone(), path.clone());
+                }
             }
         }
         let plugin = Plugin::new(&manifest, [], true).unwrap();

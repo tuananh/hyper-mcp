@@ -68,7 +68,6 @@ Whether you're using Claude Desktop, Cursor IDE, or any other MCP-compatible app
     }
   ]
 }
-
 ```
 
 The `path` can be:
@@ -108,6 +107,7 @@ hyper-mcp uses [Extism](https://github.com/extism/extism) for plugin development
 - [My IP plugin](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/myip): An example how to do HTTP request with `hyper-mcp`.
 - [Fetch plugin](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/fetch): An example how to fetch basic webpages. No full browser capability yet.
 - [Crypto price plugin](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/crypto-price): An example of writing a plugin in Go.
+- [Filesystem plugin](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/fs): An example plugin that allow you to securely access file system.
 
 ### Publishing Plugins
 
