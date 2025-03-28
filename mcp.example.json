@@ -2,7 +2,7 @@
   "plugins": [
     {
       "name": "time",
-      "path": "/home/anh/Code/hyper-mcp/wasm/time.wasm"
+      "path": "oci://ghcr.io/tuananh/time-plugin:latest"
     },
     {
       "name": "qr-code",
@@ -11,6 +11,20 @@
     {
       "name": "hash",
       "path": "oci://ghcr.io/tuananh/hash-plugin:latest"
+    },
+    {
+      "name": "myip",
+      "path": "oci://ghcr.io/tuananh/myip-plugin:latest",
+      "runtime_config": {
+        "allowed_host": "1.1.1.1"
+      }
+    },
+    {
+      "name": "fetch",
+      "path": "oci://ghcr.io/tuananh/fetch-plugin:latest",
+      "runtime_config": {
+        "allowed_host": "*"
+      }
     }
   ]
 }
