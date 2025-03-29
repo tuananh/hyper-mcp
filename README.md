@@ -108,6 +108,10 @@ We maintain several example plugins to get you started:
 - [crypto-price](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/crypto-price): Get cryptocurrency prices (Go example)
 - [fs](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/fs): File system operations
 
+### Community-built plugins
+
+- [hackernews](https://github.com/hungran/hyper-mcp-hackernews-tool): This plugin connects to the Hacker News API to fetch the current top stories and display them with their titles, scores, authors, and URLs.
+
 ## Creating Plugins
 
 Check out our [example plugins](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins) to learn how to build your own.
