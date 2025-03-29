@@ -37,4 +37,4 @@ debug:
     npx @modelcontextprotocol/inspector {{hyper_mcp_bin}} --config-file ~/.config/hyper-mcp/config.json
 
 run:
-    cargo run
+    cargo run -- --config-file ~/.config/hyper-mcp/config.json
