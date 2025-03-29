@@ -76,10 +76,24 @@ $ hyper-mcp
 
 ## Using with Cursor IDE
 
-1. Set up hyper-mcp in Cursor's settings:
+You can configure hyper-mcp either globally for all projects or specifically for individual projects.
+
+1. For project-scope configuration, create `.cursor/mcp.json` in your project root:
+```json
+{
+  "mcpServers": {
+    "hyper-mcp": {
+      "command": "/path/to/hyper-mcp",
+      "args": [""]
+    }
+  }
+}
+```
+
+2. Set up hyper-mcp in Cursor's settings:
    ![cursor mcp](./assets/cursor-mcp.png)
 
-2. Start using tools through chat:
+3. Start using tools through chat:
    ![cursor mcp chat](./assets/cursor-mcp-1.png)
 
 ## Available Plugins
