@@ -7,7 +7,6 @@ use std::fs;
 use std::io::Read;
 use std::path::Path;
 use tar::Archive;
-use tracing::info;
 
 // Docker manifest format v2
 #[derive(Debug, Serialize, Deserialize)]
@@ -50,18 +49,18 @@ fn build_auth(reference: &Reference) -> RegistryAuth {
         Err(CredentialRetrievalError::ConfigNotFound) => RegistryAuth::Anonymous,
         Err(CredentialRetrievalError::NoCredentialConfigured) => RegistryAuth::Anonymous,
         Err(e) => {
-            info!(
+            log::info!(
                 "Error retrieving docker credentials: {}. Using anonymous auth",
                 e
             );
             RegistryAuth::Anonymous
         }
         Ok(DockerCredential::UsernamePassword(username, password)) => {
-            info!("Found docker credentials");
+            log::info!("Found docker credentials");
             RegistryAuth::Basic(username, password)
         }
         Ok(DockerCredential::IdentityToken(_)) => {
-            info!(
+            log::info!(
                 "Cannot use contents of docker config, identity token not supported. Using anonymous auth"
             );
             RegistryAuth::Anonymous
@@ -75,14 +74,15 @@ pub async fn pull_and_extract_oci_image(
     local_output_path: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if Path::new(local_output_path).exists() {
-        info!(
+        log::info!(
             "Plugin {} already cached at: {}. Skipping downloading.",
-            image_reference, local_output_path
+            image_reference,
+            local_output_path
         );
         return Ok(());
     }
 
-    info!("Pulling {} ...", image_reference);
+    log::info!("Pulling {} ...", image_reference);
 
     let client_config = oci_client::client::ClientConfig::default();
     let client = Client::new(client_config);
@@ -127,12 +127,12 @@ pub async fn pull_and_extract_oci_image(
                             let mut content = Vec::new();
                             entry.read_to_end(&mut content)?;
                             fs::write(local_output_path, content)?;
-                            info!("Successfully extracted to: {}", local_output_path);
+                            log::info!("Successfully extracted to: {}", local_output_path);
                             return Ok(());
                         }
                     }
                 }
-                Err(e) => info!("Error during extraction: {}", e),
+                Err(e) => log::info!("Error during extraction: {}", e),
             }
         }
     }
