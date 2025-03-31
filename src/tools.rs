@@ -3,7 +3,6 @@ use crate::PluginManager;
 use super::types::*;
 use rpc_router::{HandlerResult, IntoHandlerError};
 use serde_json::json;
-use tracing::error;
 
 pub async fn tools_list(
     pm: PluginManager,
@@ -18,7 +17,7 @@ pub async fn tools_list(
                 payload.tools.extend(parsed.tools);
             }
             Err(e) => {
-                error!("tool {} describe() error: {}", key, e.to_string());
+                log::error!("tool {} describe() error: {}", key, e);
             }
         }
     }
@@ -44,11 +43,7 @@ pub async fn tools_call(
             Ok(result) => match serde_json::from_str::<CallToolResult>(result) {
                 Ok(parsed) => Ok(parsed),
                 Err(e) => {
-                    error!(
-                        "Failed to deserialize data: {} with {}",
-                        result,
-                        e.to_string()
-                    );
+                    log::error!("Failed to deserialize data: {} with {}", result, e);
                     Err(
                         json!({"code": -32602, "message": "Failed to deserialized data"})
                             .into_handler_error(),
@@ -56,11 +51,7 @@ pub async fn tools_call(
                 }
             },
             Err(e) => {
-                error!(
-                    "Failed to execute plugin: {}, request: {:?}",
-                    e.to_string(),
-                    request
-                );
+                log::error!("Failed to execute plugin: {}, request: {:?}", e, request);
                 Err(
                     json!({"code": -32602, "message": "Failed to execute plugin"})
                         .into_handler_error(),

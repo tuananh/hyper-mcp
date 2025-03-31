@@ -6,14 +6,12 @@ use rpc_router::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
-use std::fs::OpenOptions;
 use std::io;
-use std::io::Write;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
-use tracing::{error, info};
 
 mod r#mod;
+mod config;
 mod oci;
 mod prompts;
 mod resources;
@@ -36,8 +34,18 @@ struct Cli {
     #[arg(short, long, value_name = "FILE")]
     config_file: Option<PathBuf>,
 
-    #[arg(short, long, value_name = "LOG_FILE")]
-    log_file: Option<PathBuf>,
+    /// Log output file. Leave empty to write to stderr.
+    #[arg(short = 'l', long = "log.file", value_name = "PATH", env = "LOG_FILE")]
+    log_file: Option<String>,
+
+    /// Log level.
+    #[arg(
+        long = "log.level",
+        value_name = "LEVEL",
+        env = "LOG_LEVEL",
+        default_value = "info"
+    )]
+    log_level: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -65,8 +73,6 @@ pub struct PluginManager {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt::init();
-
     let cli = Cli::parse();
 
     // Get default config path in the user's config directory
@@ -82,11 +88,13 @@ async fn main() -> anyhow::Result<()> {
         std::fs::create_dir_all(parent)?;
     }
 
+    config::init_logger(cli.log_file.as_deref(), cli.log_level.as_deref())?;
+
     let config_path = cli.config_file.unwrap_or(default_config_path);
-    info!("using config_file at {}", config_path.display());
+    log::info!("using config_file at {}", config_path.display());
     let config: Config = {
         let config_content = tokio::fs::read_to_string(&config_path).await.map_err(|e| {
-            error!("Failed to read config file at {:?}: {}", config_path, e);
+            log::error!("Failed to read config file at {:?}: {}", config_path, e);
             e
         })?;
         serde_json::from_str(&config_content)?
@@ -127,9 +135,10 @@ async fn main() -> anyhow::Result<()> {
             {
                 eprintln!("Error pulling oci plugin: {}", e);
             }
-            info!(
+            log::info!(
                 "cache plugin `{}` to : {}",
-                plugin_cfg.name, local_output_path
+                plugin_cfg.name,
+                local_output_path
             );
             tokio::fs::read(local_output_path).await?
         } else {
@@ -138,7 +147,7 @@ async fn main() -> anyhow::Result<()> {
 
         let mut manifest = Manifest::new([Wasm::data(wasm_content)]);
         if let Some(runtime_cfg) = &plugin_cfg.runtime_config {
-            info!("runtime_cfg: {:?}", runtime_cfg);
+            log::info!("runtime_cfg: {:?}", runtime_cfg);
             if let Some(host) = &runtime_cfg.allowed_host {
                 manifest = manifest.with_allowed_host(host);
             }
@@ -156,7 +165,7 @@ async fn main() -> anyhow::Result<()> {
             .await
             .insert(plugin_cfg.name.clone(), plugin);
 
-        info!("Loaded plugin {}", plugin_cfg.name);
+        log::info!("Loaded plugin {}", plugin_cfg.name);
     }
 
     // setup router
@@ -174,18 +183,9 @@ async fn main() -> anyhow::Result<()> {
 
     std::fs::create_dir_all(&log_dir)?;
 
-    let default_log_file_path = log_dir.join("mcp.jsonl");
-    let log_file_path = cli.log_file.unwrap_or(default_log_file_path);
-    info!("using log_file at {}", log_file_path.display());
-    let mut logging_file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(log_file_path)
-        .unwrap();
-
     while input.read_line(&mut line).unwrap() != 0 {
         let line = std::mem::take(&mut line);
-        writeln!(logging_file, "receive: {}", line).unwrap();
+        log::debug!("received line: {}", line);
         if !line.is_empty() {
             if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(&line) {
                 // notifications, no response required
@@ -215,7 +215,7 @@ async fn main() -> anyhow::Result<()> {
                                 let response =
                                     JsonRpcResponse::new(id, call_response.value.clone());
                                 let response_json = serde_json::to_string(&response).unwrap();
-                                writeln!(logging_file, "ok: {}\n", response_json).unwrap();
+                                log::debug!("ok: {}", response_json);
                                 println!("{}", response_json);
                             }
                         }
@@ -228,15 +228,14 @@ async fn main() -> anyhow::Result<()> {
                                         "id": id
                                     });
                                     let response = serde_json::to_string(&json_error).unwrap();
-                                    writeln!(logging_file, "error: {}\n", response).unwrap();
+                                    log::error!("error: {}", response);
                                     println!("{}", response);
                                 }
                             }
                             _ => {
-                                error!("Unexpected error {:?}", error);
+                                log::error!("Unexpected error {:?}", error);
                                 let json_error = JsonRpcError::new(id, -1, "Invalid json-rpc call");
                                 let response = serde_json::to_string(&json_error).unwrap();
-                                writeln!(logging_file, "error: {}\n", error).unwrap();
                                 println!("{}", response);
                             }
                         },
