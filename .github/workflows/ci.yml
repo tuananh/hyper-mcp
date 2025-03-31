@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
@@ -15,33 +15,33 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        components: rustfmt, clippy
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
 
-    - name: Install WASM target
-      run: rustup target add wasm32-wasip1
+      - name: Install WASM target
+        run: rustup target add wasm32-wasip1
 
-    - name: Cache dependencies
-      uses: Swatinem/rust-cache@v2
-      with:
-        workspaces: "., examples/plugins/*"
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "., examples/plugins/*"
 
-    - name: Build hyper-mcp
-      run: cargo build
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
 
-    - name: Build example plugins
-      run: |
-        for plugin in qr-code hash myip fetch fs; do
-          echo "Building plugin: $plugin"
-          cargo build --release --target wasm32-wasip1 --manifest-path "examples/plugins/$plugin/Cargo.toml"
-        done
+      - name: Check formatting
+        run: cargo fmt -- --check
 
-    - name: Run clippy
-      run: cargo clippy -- -D warnings
+      - name: Build hyper-mcp
+        run: cargo build
 
-    - name: Check formatting
-      run: cargo fmt -- --check 
+      - name: Build example plugins
+        run: |
+          for plugin in qr-code hash myip fetch fs; do
+            echo "Building plugin: $plugin"
+            cargo build --release --target wasm32-wasip1 --manifest-path "examples/plugins/$plugin/Cargo.toml"
+          done
