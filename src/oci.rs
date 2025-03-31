@@ -54,7 +54,7 @@ fn build_auth(reference: &Reference) -> RegistryAuth {
                 "Error retrieving docker credentials: {}. Using anonymous auth",
                 e
             );
-            return RegistryAuth::Anonymous;
+            RegistryAuth::Anonymous
         }
         Ok(DockerCredential::UsernamePassword(username, password)) => {
             info!("Found docker credentials");
