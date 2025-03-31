@@ -10,8 +10,8 @@ use std::io;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 
-mod r#mod;
 mod config;
+mod r#mod;
 mod oci;
 mod prompts;
 mod resources;
