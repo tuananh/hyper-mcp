@@ -74,6 +74,14 @@ Built with security-first mindset:
 $ hyper-mcp
 ```
 
+By default, logs will go into [state_dir](https://docs.rs/dirs/6.0.0/dirs/fn.state_dir.html) on Linux or [data_local_dir](https://docs.rs/dirs/6.0.0/dirs/fn.data_local_dir.html) on macOS & Windows.
+
+| Platform | Value | Example |
+|----------|--------|---------|
+| Linux | `$XDG_DATA_HOME` or `$HOME/.local/share` | `/home/alice/.local/share` |
+| macOS | `$HOME/Library/Application Support` | `/Users/Alice/Library/Application Support` |
+| Windows | `{FOLDERID_LocalAppData}` | `C:\Users\Alice\AppData\Local` |
+
 ## Using with Cursor IDE
 
 You can configure hyper-mcp either globally for all projects or specifically for individual projects.

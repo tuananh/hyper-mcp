@@ -34,15 +34,14 @@ struct Cli {
     #[arg(short, long, value_name = "FILE")]
     config_file: Option<PathBuf>,
 
-    /// Log output file. Leave empty to write to stderr.
-    #[arg(short = 'l', long = "log.file", value_name = "PATH", env = "LOG_FILE")]
+    /// Log output file path
+    #[arg(short = 'l', long = "log-file", value_name = "PATH", env = "HYPER_MCP_LOG_FILE")]
     log_file: Option<String>,
 
-    /// Log level.
     #[arg(
-        long = "log.level",
+        long = "log-level",
         value_name = "LEVEL",
-        env = "LOG_LEVEL",
+        env = "HYPER_MCP_LOG_LEVEL",
         default_value = "info"
     )]
     log_level: Option<String>,
@@ -88,7 +87,32 @@ async fn main() -> anyhow::Result<()> {
         std::fs::create_dir_all(parent)?;
     }
 
-    config::init_logger(cli.log_file.as_deref(), cli.log_level.as_deref())?;
+    // Setup default log file path in user's data directory
+    let default_log_path = dirs::state_dir()
+        .or_else(|| dirs::data_local_dir())
+        .map(|mut path| {
+            path.push("hyper-mcp");
+            path.push("logs");
+            path.push("hyper-mcp.log");
+            path
+        })
+        .unwrap();
+
+    let log_file = cli.log_file.unwrap_or_else(|| {
+        default_log_path.to_str().unwrap().to_string()
+    });
+
+    // Create log directory if it doesn't exist
+    if let Some(log_dir) = PathBuf::from(&log_file).parent() {
+        std::fs::create_dir_all(log_dir)?;
+    }
+    
+    // Initialize logging
+    config::init_logger(Some(&log_file), cli.log_level.as_deref())?;
+    log::info!("Logging initialized to: {}", log_file);
+    
+    // We will print this so user know how to debug. Everything else will be logged to the log file to ensure clean stdio communication.
+    println!("hyper-mcp started. Logs will be written to: {}", log_file);
 
     let config_path = cli.config_file.unwrap_or(default_config_path);
     log::info!("using config_file at {}", config_path.display());
@@ -172,16 +196,6 @@ async fn main() -> anyhow::Result<()> {
     let rpc_router = build_rpc_router(plugins.clone());
     let input = io::stdin();
     let mut line = String::new();
-
-    let log_dir = dirs::data_local_dir()
-        .map(|mut path| {
-            path.push("hyper-mcp");
-            path.push("logs");
-            path
-        })
-        .unwrap();
-
-    std::fs::create_dir_all(&log_dir)?;
 
     while input.read_line(&mut line).unwrap() != 0 {
         let line = std::mem::take(&mut line);
