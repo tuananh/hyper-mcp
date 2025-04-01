@@ -35,7 +35,12 @@ struct Cli {
     config_file: Option<PathBuf>,
 
     /// Log output file path
-    #[arg(short = 'l', long = "log-file", value_name = "PATH", env = "HYPER_MCP_LOG_FILE")]
+    #[arg(
+        short = 'l',
+        long = "log-file",
+        value_name = "PATH",
+        env = "HYPER_MCP_LOG_FILE"
+    )]
     log_file: Option<String>,
 
     #[arg(
@@ -98,19 +103,19 @@ async fn main() -> anyhow::Result<()> {
         })
         .unwrap();
 
-    let log_file = cli.log_file.unwrap_or_else(|| {
-        default_log_path.to_str().unwrap().to_string()
-    });
+    let log_file = cli
+        .log_file
+        .unwrap_or_else(|| default_log_path.to_str().unwrap().to_string());
 
     // Create log directory if it doesn't exist
     if let Some(log_dir) = PathBuf::from(&log_file).parent() {
         std::fs::create_dir_all(log_dir)?;
     }
-    
+
     // Initialize logging
     config::init_logger(Some(&log_file), cli.log_level.as_deref())?;
     log::info!("Logging initialized to: {}", log_file);
-    
+
     // We will print this so user know how to debug. Everything else will be logged to the log file to ensure clean stdio communication.
     println!("hyper-mcp started. Logs will be written to: {}", log_file);
 
