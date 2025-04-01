@@ -89,7 +89,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Setup default log file path in user's data directory
     let default_log_path = dirs::state_dir()
-        .or_else(|| dirs::data_local_dir())
+        .or_else(dirs::data_local_dir)
         .map(|mut path| {
             path.push("hyper-mcp");
             path.push("logs");
