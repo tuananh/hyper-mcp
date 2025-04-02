@@ -121,12 +121,19 @@ async fn main() -> anyhow::Result<()> {
 
     let config_path = cli.config_file.unwrap_or(default_config_path);
     log::info!("using config_file at {}", config_path.display());
+
     let config: Config = {
+        if !config_path.exists() {
+            return Err(anyhow::anyhow!(
+                "Config file not found at: {}. Please create a config file first.",
+                config_path.display()
+            ));
+        }
         let config_content = tokio::fs::read_to_string(&config_path).await.map_err(|e| {
             log::error!("Failed to read config file at {:?}: {}", config_path, e);
             e
         })?;
-        serde_json::from_str(&config_content)?
+        config::parse_config(&config_content, &config_path)?
     };
 
     let plugins = Arc::new(RwLock::new(HashMap::new()));
