@@ -6,7 +6,7 @@ use rpc_router::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
-use std::io;
+use std::io::{self};
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 
@@ -123,17 +123,31 @@ async fn main() -> anyhow::Result<()> {
     log::info!("using config_file at {}", config_path.display());
 
     let config: Config = {
-        if !config_path.exists() {
-            return Err(anyhow::anyhow!(
-                "Config file not found at: {}. Please create a config file first.",
-                config_path.display()
-            ));
+        let config_content = if config_path.to_str() == Some("-") {
+            // For stdin config, read until we get a valid JSON object
+            let mut buffer = String::new();
+            std::io::stdin().read_line(&mut buffer)?;
+            // Create a new stdin handle for subsequent JSON-RPC messages
+            buffer
+        } else {
+            // For regular files, check existence and read
+            if !config_path.exists() {
+                return Err(anyhow::anyhow!(
+                    "Config file not found at: {}. Please create a config file first.",
+                    config_path.display()
+                ));
+            }
+            tokio::fs::read_to_string(&config_path).await.map_err(|e| {
+                log::error!("Failed to read config file at {:?}: {}", config_path, e);
+                e
+            })?
+        };
+
+        if config_path.to_str() == Some("-") {
+            config::parse_config_from_str(&config_content)?
+        } else {
+            config::parse_config(&config_content, &config_path)?
         }
-        let config_content = tokio::fs::read_to_string(&config_path).await.map_err(|e| {
-            log::error!("Failed to read config file at {:?}: {}", config_path, e);
-            e
-        })?;
-        config::parse_config(&config_content, &config_path)?
     };
 
     let plugins = Arc::new(RwLock::new(HashMap::new()));
@@ -208,6 +222,14 @@ async fn main() -> anyhow::Result<()> {
     let rpc_router = build_rpc_router(plugins.clone());
     let input = io::stdin();
     let mut line = String::new();
+
+    // If reading from stdin for config, wait for actual RPC messages
+    if config_path.to_str() == Some("-") {
+        println!("Loading config from stdin & then waiting for JSON-RPC messages...");
+        // Keep the server running
+        tokio::signal::ctrl_c().await?;
+        return Ok(());
+    }
 
     while input.read_line(&mut line).unwrap() != 0 {
         let line = std::mem::take(&mut line);

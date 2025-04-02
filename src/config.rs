@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use chrono::Local;
 use log::LevelFilter;
 use std::{io::Write, path::Path, str::FromStr};
@@ -43,24 +43,68 @@ pub fn basename(path: &str) -> String {
     path.split('/').last().unwrap_or(path).to_string()
 }
 
+#[derive(Debug)]
+pub enum ConfigFormat {
+    Json,
+    Yaml,
+    Toml,
+}
+
+pub(crate) fn detect_format_from_content(content: &str) -> Result<ConfigFormat> {
+    // Try to determine if it's JSON by checking for { or [ at start (after whitespace)
+    let trimmed = content.trim_start();
+    if (trimmed.starts_with('{') || trimmed.starts_with('['))
+        && serde_json::from_str::<serde_json::Value>(content).is_ok()
+    {
+        return Ok(ConfigFormat::Json);
+    }
+
+    // Try YAML - Check for common YAML indicators
+    if (trimmed.contains(": ") || trimmed.starts_with("---"))
+        && serde_yaml::from_str::<serde_yaml::Value>(content).is_ok()
+    {
+        return Ok(ConfigFormat::Yaml);
+    }
+
+    // Try TOML - Look for key-value pairs with = or section headers
+    if (trimmed.contains('=') || trimmed.contains('['))
+        && toml::from_str::<toml::Value>(content).is_ok()
+    {
+        return Ok(ConfigFormat::Toml);
+    }
+
+    Err(anyhow!(
+        "Unable to detect config format. Content doesn't appear to be valid JSON, YAML, or TOML"
+    ))
+}
+
+pub(crate) fn parse_config_from_str<T: serde::de::DeserializeOwned>(content: &str) -> Result<T> {
+    let format = detect_format_from_content(content)?;
+    match format {
+        ConfigFormat::Json => serde_json::from_str(content).context("Failed to parse JSON config"),
+        ConfigFormat::Yaml => serde_yaml::from_str(content).context("Failed to parse YAML config"),
+        ConfigFormat::Toml => toml::from_str(content).context("Failed to parse TOML config"),
+    }
+}
+
 pub(crate) fn parse_config<T: serde::de::DeserializeOwned>(
     content: &str,
     file_path: &Path,
 ) -> Result<T> {
-    let extension = file_path
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .unwrap_or("json");
-
-    match extension.to_lowercase().as_str() {
-        "json" => serde_json::from_str(content).context("Failed to parse JSON config"),
-        "yaml" | "yml" => serde_yaml::from_str(content).context("Failed to parse YAML config"),
-        "toml" => toml::from_str(content).context("Failed to parse TOML config"),
-        _ => Err(anyhow::anyhow!(
-            "Unsupported config file format: {}",
-            extension
-        )),
+    if let Some(extension) = file_path.extension().and_then(|ext| ext.to_str()) {
+        // If we have a file extension, try that format first
+        match extension.to_lowercase().as_str() {
+            "json" => return serde_json::from_str(content).context("Failed to parse JSON config"),
+            "yaml" | "yml" => {
+                return serde_yaml::from_str(content).context("Failed to parse YAML config");
+            }
+            "toml" => return toml::from_str(content).context("Failed to parse TOML config"),
+            _ => {} // Fall through to content-based detection
+        }
     }
+
+    // If no extension or unknown extension, try to detect from content
+    parse_config_from_str(content)
 }
 
 #[cfg(test)]
