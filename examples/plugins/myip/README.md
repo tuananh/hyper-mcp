@@ -25,7 +25,7 @@ To use this, you will need to update your config like this. Note the `allowed_ho
       "name": "myip",
       "path": "oci://ghcr.io/tuananh/myip-plugin:latest",
       "runtime_config": {
-        "allowed_host": "1.1.1.1"
+        "allowed_hosts": ["1.1.1.1"]
       }
     }
   ]

@@ -20,7 +20,7 @@ Call with:
       "name": "fetch",
       "path": "oci://ghcr.io/tuananh/fetch-plugin:latest",
       "runtime_config": {
-        "allowed_host": "*"
+        "allowed_hosts": ["*"]
       }
     }
   ]

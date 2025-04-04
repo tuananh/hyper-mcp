@@ -9,7 +9,7 @@
       "name": "crypto-price",
       "path": "oci://ghcr.io/tuananh/crypto-price-plugin:latest",
       "runtime_config": {
-        "allowed_host": "api.coingecko.com"
+        "allowed_hosts": ["api.coingecko.com"]
       }
     }
   ]
