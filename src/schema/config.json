@@ -20,13 +20,23 @@
           },
           "runtime_config": {
             "type": "object",
+            "additionalProperties": false,
             "properties": {
-              "allowed_host": {
-                "type": "string"
+              "allowed_hosts": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
               },
               "allowed_paths": {
                 "type": "array",
                 "items": {
+                  "type": "string"
+                }
+              },
+              "env_vars": {
+                "type": "object",
+                "additionalProperties": {
                   "type": "string"
                 }
               }

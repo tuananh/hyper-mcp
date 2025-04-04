@@ -54,14 +54,14 @@ Built with security-first mindset:
       "name": "myip",
       "path": "oci://ghcr.io/tuananh/myip-plugin:latest",
       "runtime_config": {
-        "allowed_host": "1.1.1.1"
+        "allowed_hosts": ["1.1.1.1"]
       }
     },
     {
       "name": "fetch",
       "path": "oci://ghcr.io/tuananh/fetch-plugin:latest",
       "runtime_config": {
-        "allowed_host": "*"
+        "allowed_hosts": ["*"]
       }
     }
   ]

@@ -59,8 +59,9 @@ struct Config {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct RuntimeConfig {
-    allowed_host: Option<String>,
+    allowed_hosts: Option<Vec<String>>,
     allowed_paths: Option<Vec<String>>,
+    env_vars: Option<HashMap<String, String>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -215,13 +216,22 @@ async fn main() -> anyhow::Result<()> {
         let mut manifest = Manifest::new([Wasm::data(wasm_content)]);
         if let Some(runtime_cfg) = &plugin_cfg.runtime_config {
             log::info!("runtime_cfg: {:?}", runtime_cfg);
-            if let Some(host) = &runtime_cfg.allowed_host {
-                manifest = manifest.with_allowed_host(host);
+            if let Some(hosts) = &runtime_cfg.allowed_hosts {
+                for host in hosts {
+                    manifest = manifest.with_allowed_host(host);
+                }
             }
             if let Some(paths) = &runtime_cfg.allowed_paths {
                 for path in paths {
                     // path will be available in the plugin with exact same path
                     manifest = manifest.with_allowed_path(path.clone(), path.clone());
+                }
+            }
+
+            // Add plugin configurations if present
+            if let Some(env_vars) = &runtime_cfg.env_vars {
+                for (key, value) in env_vars {
+                    manifest = manifest.with_config_key(key, value);
                 }
             }
         }
