@@ -1,7 +1,21 @@
 use anyhow::{Context, Result, anyhow};
 use chrono::Local;
+use jsonschema::{Draft, JSONSchema};
+use lazy_static::lazy_static;
 use log::LevelFilter;
 use std::{io::Write, path::Path, str::FromStr};
+
+lazy_static! {
+    static ref CONFIG_SCHEMA: JSONSchema = {
+        let schema = include_str!("schema/config.json");
+        let schema_value: serde_json::Value =
+            serde_json::from_str(schema).expect("Failed to parse config schema");
+        JSONSchema::options()
+            .with_draft(Draft::Draft7)
+            .compile(&schema_value)
+            .expect("Failed to compile JSON schema")
+    };
+}
 
 pub(crate) fn init_logger(path: Option<&str>, level: Option<&str>) -> Result<()> {
     let log_level = LevelFilter::from_str(level.unwrap_or("info"))?;
@@ -78,7 +92,59 @@ pub(crate) fn detect_format_from_content(content: &str) -> Result<ConfigFormat> 
     ))
 }
 
+pub(crate) fn validate_config(content: &str) -> Result<()> {
+    // First try to parse as a generic Value to check basic format
+    let format = detect_format_from_content(content)?;
+    let value: serde_json::Value = match format {
+        ConfigFormat::Json => serde_json::from_str(content).context("Failed to parse as JSON")?,
+        ConfigFormat::Yaml => {
+            let yaml_value: serde_yaml::Value =
+                serde_yaml::from_str(content).context("Failed to parse as YAML")?;
+            serde_json::to_value(yaml_value).context("Failed to convert YAML to JSON value")?
+        }
+        ConfigFormat::Toml => {
+            let toml_value: toml::Value =
+                toml::from_str(content).context("Failed to parse as TOML")?;
+            serde_json::to_value(toml_value).context("Failed to convert TOML to JSON value")?
+        }
+    };
+
+    // Validate against schema
+    let validation = CONFIG_SCHEMA.validate(&value);
+    if let Err(errors) = validation {
+        let error_messages: Vec<String> = errors.map(|error| format!("- {}", error)).collect();
+        return Err(anyhow!(
+            "Config validation failed:\n{}",
+            error_messages.join("\n")
+        ));
+    }
+
+    // Additional validation for file paths
+    if let Some(plugins) = value
+        .as_object()
+        .and_then(|obj| obj.get("plugins"))
+        .and_then(|v| v.as_array())
+    {
+        for plugin in plugins {
+            if let Some(path) = plugin.get("path").and_then(|v| v.as_str()) {
+                // Only validate local file paths (not http or oci)
+                if !path.starts_with("http")
+                    && !path.starts_with("oci://")
+                    && !Path::new(path).exists()
+                {
+                    return Err(anyhow!("Local plugin path '{}' does not exist", path));
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
 pub(crate) fn parse_config_from_str<T: serde::de::DeserializeOwned>(content: &str) -> Result<T> {
+    // First validate the config structure
+    validate_config(content)?;
+
     let format = detect_format_from_content(content)?;
     match format {
         ConfigFormat::Json => serde_json::from_str(content).context("Failed to parse JSON config"),
@@ -170,5 +236,64 @@ mod tests {
         // Test with an invalid path
         let result = init_logger(Some("/invalid/path/to/log.log"), Some("debug"));
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_config() {
+        // Valid JSON config
+        let valid_json = r#"{
+            "plugins": [
+                {
+                    "name": "test",
+                    "path": "oci://test/plugin"
+                }
+            ]
+        }"#;
+        assert!(validate_config(valid_json).is_ok());
+
+        // Missing plugins field
+        let invalid_json = r#"{
+            "something": []
+        }"#;
+        assert!(validate_config(invalid_json).is_err());
+
+        // Invalid plugin object (missing required fields)
+        let invalid_plugin = r#"{
+            "plugins": [
+                {
+                    "name": "test"
+                }
+            ]
+        }"#;
+        assert!(validate_config(invalid_plugin).is_err());
+
+        // Invalid runtime_config
+        let invalid_runtime = r#"{
+            "plugins": [
+                {
+                    "name": "test",
+                    "path": "oci://test/plugin",
+                    "runtime_config": {
+                        "allowed_host": 123
+                    }
+                }
+            ]
+        }"#;
+        assert!(validate_config(invalid_runtime).is_err());
+
+        // Valid config with runtime_config
+        let valid_runtime = r#"{
+            "plugins": [
+                {
+                    "name": "test",
+                    "path": "oci://test/plugin",
+                    "runtime_config": {
+                        "allowed_host": "example.com",
+                        "allowed_paths": ["/tmp", "/var/log"]
+                    }
+                }
+            ]
+        }"#;
+        assert!(validate_config(valid_runtime).is_ok());
     }
 }

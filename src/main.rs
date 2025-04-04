@@ -139,14 +139,31 @@ async fn main() -> anyhow::Result<()> {
             }
             tokio::fs::read_to_string(&config_path).await.map_err(|e| {
                 log::error!("Failed to read config file at {:?}: {}", config_path, e);
-                e
+                anyhow::anyhow!("Failed to read config file: {}", e)
             })?
         };
 
+        // First validate the config structure
+        if let Err(e) = config::validate_config(&config_content) {
+            log::error!("Invalid config file: {}", e);
+            return Err(anyhow::anyhow!(
+                "Invalid config file at {}: {}\n",
+                config_path.display(),
+                e,
+            ));
+        }
+
+        // Parse the validated config
         if config_path.to_str() == Some("-") {
-            config::parse_config_from_str(&config_content)?
+            config::parse_config_from_str(&config_content).map_err(|e| {
+                log::error!("Failed to parse config from stdin: {}", e);
+                e
+            })?
         } else {
-            config::parse_config(&config_content, &config_path)?
+            config::parse_config(&config_content, &config_path).map_err(|e| {
+                log::error!("Failed to parse config file at {:?}: {}", config_path, e);
+                e
+            })?
         }
     };
 
