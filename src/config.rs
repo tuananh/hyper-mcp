@@ -54,7 +54,7 @@ pub(crate) fn init_logger(path: Option<&str>, level: Option<&str>) -> Result<()>
 }
 
 pub fn basename(path: &str) -> String {
-    path.split('/').last().unwrap_or(path).to_string()
+    path.split('/').next_back().unwrap_or(path).to_string()
 }
 
 #[derive(Debug)]
