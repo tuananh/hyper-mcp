@@ -252,11 +252,8 @@ async fn main() -> anyhow::Result<()> {
         }
 
         let plugin_name = plugin_cfg.name.clone();
-        
-        plugins
-            .write()
-            .await
-            .insert(plugin_name.clone(), plugin);
+
+        plugins.write().await.insert(plugin_name.clone(), plugin);
 
         log::info!("Loaded plugin {}", plugin_name);
     }
