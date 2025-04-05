@@ -33,6 +33,9 @@ write-file:
 list-dir:
     RUST_LOG=info echo '{ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": "fs", "arguments": { "operation": "list_dir", "path": "/tmp" } } }' | {{hyper_mcp_bin}}
 
+eval-py:
+    RUST_LOG=info echo '{ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": "eval_python", "arguments": { "code": "2+3" } } }' | {{hyper_mcp_bin}}
+
 debug:
     npx @modelcontextprotocol/inspector {{hyper_mcp_bin}} --config-file ~/.config/hyper-mcp/config.json
 
