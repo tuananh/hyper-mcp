@@ -74,6 +74,8 @@ struct PluginConfig {
 #[derive(Clone, RpcResource)]
 pub struct PluginManager {
     plugins: Arc<RwLock<HashMap<String, Plugin>>>,
+    // Cache to map tool names to plugin names
+    tool_to_plugin: Arc<RwLock<HashMap<String, String>>>,
 }
 
 #[tokio::main]
@@ -118,7 +120,7 @@ async fn main() -> anyhow::Result<()> {
     log::info!("Logging initialized to: {}", log_file);
 
     // We will print this so user know how to debug. Everything else will be logged to the log file to ensure clean stdio communication.
-    println!("hyper-mcp started. Logs will be written to: {}", log_file);
+    // println!("hyper-mcp started. Logs will be written to: {}", log_file);
 
     let config_path = cli.config_file.unwrap_or(default_config_path);
     log::info!("using config_file at {}", config_path.display());
@@ -169,6 +171,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let plugins = Arc::new(RwLock::new(HashMap::new()));
+    let tool_to_plugin = Arc::new(RwLock::new(HashMap::new()));
 
     for plugin_cfg in &config.plugins {
         let wasm_content = if plugin_cfg.path.starts_with("http") {
@@ -235,18 +238,31 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
         }
-        let plugin = Plugin::new(&manifest, [], true).unwrap();
+        let mut plugin = Plugin::new(&manifest, [], true).unwrap();
 
+        // Try to get tool information from the plugin and populate the cache
+        if let Ok(result) = plugin.call::<&str, &str>("describe", "") {
+            if let Ok(parsed) = serde_json::from_str::<types::ListToolsResult>(result) {
+                let mut cache = tool_to_plugin.write().await;
+                for tool in parsed.tools {
+                    log::info!("Saving tool {}/{} to cache", plugin_cfg.name, tool.name);
+                    cache.insert(tool.name, plugin_cfg.name.clone());
+                }
+            }
+        }
+
+        let plugin_name = plugin_cfg.name.clone();
+        
         plugins
             .write()
             .await
-            .insert(plugin_cfg.name.clone(), plugin);
+            .insert(plugin_name.clone(), plugin);
 
-        log::info!("Loaded plugin {}", plugin_cfg.name);
+        log::info!("Loaded plugin {}", plugin_name);
     }
 
     // setup router
-    let rpc_router = build_rpc_router(plugins.clone());
+    let rpc_router = build_rpc_router(plugins.clone(), tool_to_plugin.clone());
     let input = io::stdin();
     let mut line = String::new();
 
@@ -322,12 +338,16 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn build_rpc_router(plugins: Arc<RwLock<HashMap<String, Plugin>>>) -> RpcRouter {
+fn build_rpc_router(
+    plugins: Arc<RwLock<HashMap<String, Plugin>>>,
+    tool_to_plugin: Arc<RwLock<HashMap<String, String>>>,
+) -> RpcRouter {
     let plugins_clone = plugins.clone();
 
     RouterBuilder::default()
         .append_resource(PluginManager {
             plugins: plugins_clone,
+            tool_to_plugin,
         })
         .append_dyn("initialize", initialize.into_dyn())
         .append_dyn("ping", ping.into_dyn())

@@ -36,5 +36,8 @@ list-dir:
 debug:
     npx @modelcontextprotocol/inspector {{hyper_mcp_bin}} --config-file ~/.config/hyper-mcp/config.json
 
+gh-list-repos:
+    RUST_LOG=info echo '{ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": "gh-list-repos", "arguments": { "username": "tuananh", "type": "all" } } }' | {{hyper_mcp_bin}}
+
 run:
     cargo run
