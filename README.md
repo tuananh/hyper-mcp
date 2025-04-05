@@ -116,6 +116,7 @@ We maintain several example plugins to get you started:
 - [crypto-price](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/crypto-price): Get cryptocurrency prices (Go)
 - [fs](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/fs): File system operations (Rust)
 - [github](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/fs): GitHub plugin (Go)
+- [eval-py](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/eval-py): Evaluate Python code with RustPython (Rust)
 
 ### Community-built plugins
 
