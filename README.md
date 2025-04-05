@@ -108,13 +108,14 @@ You can configure hyper-mcp either globally for all projects or specifically for
 
 We maintain several example plugins to get you started:
 
-- [time](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/time): Get current time and do time calculations
-- [qr-code](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/qr-code): Generate QR codes
-- [hash](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/hash): Generate various types of hashes
-- [myip](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/myip): Get your current IP (example of HTTP requests)
-- [fetch](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/fetch): Basic webpage fetching
-- [crypto-price](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/crypto-price): Get cryptocurrency prices (Go example)
-- [fs](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/fs): File system operations
+- [time](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/time): Get current time and do time calculations (Rust)
+- [qr-code](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/qr-code): Generate QR codes (Rust)
+- [hash](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/hash): Generate various types of hashes (Rust)
+- [myip](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/myip): Get your current IP (Rust)
+- [fetch](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/fetch): Basic webpage fetching (Rust)
+- [crypto-price](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/crypto-price): Get cryptocurrency prices (Go)
+- [fs](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/fs): File system operations (Rust)
+- [github](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/fs): GitHub plugin (Go)
 
 ### Community-built plugins
 
