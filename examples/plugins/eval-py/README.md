@@ -2,6 +2,9 @@
 
 An example of using [RustPython](https://github.com/RustPython/RustPython) to evaluate Python code.
 
+
+![](/assets/eval-py.jpg)
+
 ## Usage
 
 ```json
