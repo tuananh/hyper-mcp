@@ -3,11 +3,14 @@ name = "hyper-mcp"
 version = "0.1.0"
 edition = "2024"
 authors = ["Tuan Anh Tran <me@tuananh.org>"]
-description = "Model Context Protocol (MCP) server"
+description = " A fast, secure MCP server that extends its capabilities through WebAssembly plugins"
 keywords = ["rust", "ai", "mcp", "cli"]
 categories = ["command-line-utilities"]
 readme = "README.md"
 license = "Apache-2.0"
+repository = "https://github.com/tuananh/hyper-mcp"
+homepage = "https://github.com/tuananh/hyper-mcp"
+documentation = "https://github.com/tuananh/hyper-mcp"
 
 [dependencies]
 tokio = { version = "1.44", features = ["full"] }
@@ -36,3 +39,7 @@ chrono = "0.4.40"
 tree_magic_mini = "3.0.3"
 jsonschema = "0.17"
 lazy_static = "1.4"
+
+[[bin]]
+name = "hyper-mcp"
+path = "src/main.rs"
