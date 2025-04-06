@@ -39,6 +39,7 @@ chrono = "0.4.40"
 tree_magic_mini = "3.0.3"
 jsonschema = "0.17"
 lazy_static = "1.4"
+sigstore = { version = "0.11.0", features = ["cosign", "verify", "bundle", "full-native-tls"] }
 
 [[bin]]
 name = "hyper-mcp"

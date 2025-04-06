@@ -50,6 +50,10 @@ struct Cli {
         default_value = "info"
     )]
     log_level: Option<String>,
+
+    /// Skip signature verification for OCI images
+    #[arg(long = "insecure-skip-signature")]
+    insecure_skip_signature: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -57,14 +61,14 @@ struct Config {
     plugins: Vec<PluginConfig>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct RuntimeConfig {
     allowed_hosts: Option<Vec<String>>,
     allowed_paths: Option<Vec<String>>,
     env_vars: Option<HashMap<String, String>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct PluginConfig {
     name: String,
     path: String,
@@ -200,11 +204,19 @@ async fn main() -> anyhow::Result<()> {
                 cache_dir.join(format!("{}-{}.wasm", plugin_cfg.name, short_hash));
             let local_output_path = local_output_path.to_str().unwrap();
 
-            if let Err(e) =
-                pull_and_extract_oci_image(image_reference, target_file_path, local_output_path)
-                    .await
+            // Use the CLI flag to determine whether to skip signature verification
+            let verify_signature = !cli.insecure_skip_signature;
+
+            if let Err(e) = pull_and_extract_oci_image(
+                image_reference,
+                target_file_path,
+                local_output_path,
+                verify_signature,
+            )
+            .await
             {
-                eprintln!("Error pulling oci plugin: {}", e);
+                log::error!("Error pulling oci plugin: {}", e);
+                return Err(anyhow::anyhow!("Failed to pull OCI plugin: {}", e));
             }
             log::info!(
                 "cache plugin `{}` to : {}",

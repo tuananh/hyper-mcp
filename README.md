@@ -27,6 +27,7 @@ Built with security-first mindset:
 - Memory-safe execution with resource limits
 - Secure plugin distribution through container registries
 - Fine-grained access control for host functions
+- OCI plugin images are signed at publish time and verified at load time with sigstore.
 
 ## Getting Started
 
@@ -81,6 +82,8 @@ By default, logs will go into [state_dir](https://docs.rs/dirs/6.0.0/dirs/fn.sta
 | Linux | `$XDG_DATA_HOME` or `$HOME/.local/share` | `/home/alice/.local/share` |
 | macOS | `$HOME/Library/Application Support` | `/Users/Alice/Library/Application Support` |
 | Windows | `{FOLDERID_LocalAppData}` | `C:\Users\Alice\AppData\Local` |
+
+If you're loading unsigned OCI plugin, you will need to use `--insecure-skip-signature` flag.
 
 ## Using with Cursor IDE
 

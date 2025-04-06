@@ -1,11 +1,17 @@
+use anyhow::anyhow;
 use docker_credential::{CredentialRetrievalError, DockerCredential};
 use flate2::read::GzDecoder;
 use oci_client::Reference;
 use oci_client::{Client, manifest, manifest::OciDescriptor, secrets::RegistryAuth};
 use serde::{Deserialize, Serialize};
+use sigstore::cosign::{ClientBuilder, CosignCapabilities, verify_constraints};
+use sigstore::errors::SigstoreVerifyConstraintsError;
+use sigstore::registry::{Auth, OciReference};
+use sigstore::trust::ManualTrustRoot;
 use std::fs;
 use std::io::Read;
 use std::path::Path;
+use std::str::FromStr;
 use tar::Archive;
 
 // Docker manifest format v2
@@ -68,10 +74,88 @@ fn build_auth(reference: &Reference) -> RegistryAuth {
     }
 }
 
+async fn verify_image_signature(image_reference: &str) -> Result<bool, anyhow::Error> {
+    log::info!("Verifying signature for {}", image_reference);
+
+    // Create a minimal trust repository
+    let repo = ManualTrustRoot::default();
+    let auth = &Auth::Anonymous;
+
+    // Create a client builder and build the client
+    let client_builder = ClientBuilder::default();
+
+    // Create client with trust repository
+    let client_builder = match client_builder.with_trust_repository(&repo) {
+        Ok(builder) => builder,
+        Err(e) => return Err(anyhow!("Failed to set up trust repository: {}", e)),
+    };
+
+    // Build the client
+    let mut client = match client_builder.build() {
+        Ok(client) => client,
+        Err(e) => return Err(anyhow!("Failed to build Sigstore client: {}", e)),
+    };
+
+    // Parse the reference
+    let image_ref = match OciReference::from_str(image_reference) {
+        Ok(reference) => reference,
+        Err(e) => return Err(anyhow!("Invalid image reference: {}", e)),
+    };
+
+    // Triangulate to find the signature image and source digest
+    let (cosign_signature_image, source_image_digest) =
+        match client.triangulate(&image_ref, auth).await {
+            Ok((sig_image, digest)) => (sig_image, digest),
+            Err(e) => {
+                log::warn!("Failed to triangulate image: {}", e);
+                return Ok(false); // No signatures found
+            }
+        };
+
+    // Get trusted signature layers
+    let signature_layers = match client
+        .trusted_signature_layers(auth, &source_image_digest, &cosign_signature_image)
+        .await
+    {
+        Ok(layers) => layers,
+        Err(e) => {
+            log::warn!("Failed to get trusted signature layers: {}", e);
+            return Ok(false);
+        }
+    };
+
+    if signature_layers.is_empty() {
+        log::warn!("No valid signatures found for {}", image_reference);
+        return Ok(false);
+    }
+
+    // Empty verification constraints means we're just checking for valid signatures
+    let verification_constraints = Vec::new();
+
+    // Verify the constraints
+    match verify_constraints(&signature_layers, verification_constraints.iter()) {
+        Ok(()) => {
+            log::info!("Signature verification successful for {}", image_reference);
+            Ok(true)
+        }
+        Err(SigstoreVerifyConstraintsError {
+            unsatisfied_constraints,
+        }) => {
+            log::warn!(
+                "Signature verification failed for {}: {:?}",
+                image_reference,
+                unsatisfied_constraints
+            );
+            Ok(false)
+        }
+    }
+}
+
 pub async fn pull_and_extract_oci_image(
     image_reference: &str,
     target_file_path: &str,
     local_output_path: &str,
+    verify_signature: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if Path::new(local_output_path).exists() {
         log::info!(
@@ -89,6 +173,27 @@ pub async fn pull_and_extract_oci_image(
 
     let reference = Reference::try_from(image_reference)?;
     let auth = build_auth(&reference);
+
+    // Verify the image signature if it's an OCI image and verification is enabled
+    if verify_signature {
+        log::info!("Signature verification enabled for {}", image_reference);
+        match verify_image_signature(image_reference).await {
+            Ok(verified) => {
+                if !verified {
+                    return Err(format!(
+                        "No valid signatures found for the image {}",
+                        image_reference
+                    )
+                    .into());
+                }
+            }
+            Err(e) => {
+                return Err(format!("Image signature verification failed: {}", e).into());
+            }
+        }
+    } else {
+        log::warn!("Signature verification disabled for {}", image_reference);
+    }
 
     // Accept both OCI and Docker manifest types
     let manifest = client
