@@ -2,9 +2,8 @@ mod pdk;
 
 use extism_pdk::*;
 use pdk::types::*;
-use serde_json::Map;
+use serde_json::json;
 
-// Called when the tool is invoked.
 pub(crate) fn call(_input: CallToolRequest) -> Result<CallToolResult, Error> {
     let request = HttpRequest::new("https://1.1.1.1/cdn-cgi/trace");
     let response = http::request::<Vec<u8>>(&request, None)
@@ -33,26 +32,18 @@ pub(crate) fn call(_input: CallToolRequest) -> Result<CallToolResult, Error> {
 }
 
 pub(crate) fn describe() -> Result<ListToolsResult, Error> {
-    let mut foo_prop: Map<String, serde_json::Value> = Map::new();
-    foo_prop.insert("type".into(), "string".into());
-    foo_prop.insert(
-        "description".into(),
-        "foo data parameter".into(),
-    );
-
-    let mut props: Map<String, serde_json::Value> = Map::new();
-    props.insert("foo".into(), foo_prop.into());
-
-    let mut schema: Map<String, serde_json::Value> = Map::new();
-    schema.insert("type".into(), "object".into());
-    schema.insert("properties".into(), serde_json::Value::Object(props));
-    schema.insert("required".into(), serde_json::Value::Array(vec!["foo".into()]));
-
     Ok(ListToolsResult {
         tools: vec![ToolDescription {
             name: "myip".into(),
             description: "Get the current IP address using Cloudflare's service".into(),
-            input_schema: schema,
+            input_schema: json!({
+                "type": "object",
+                "properties": {},
+                "required": [],
+            })
+            .as_object()
+            .unwrap()
+            .clone(),
         }],
     })
 }
