@@ -1,19 +1,17 @@
 use anyhow::{Context, Result, anyhow};
 use chrono::Local;
-use jsonschema::{Draft, JSONSchema};
+use jsonschema::Validator;
 use lazy_static::lazy_static;
 use log::LevelFilter;
 use std::{io::Write, path::Path, str::FromStr};
 
 lazy_static! {
-    static ref CONFIG_SCHEMA: JSONSchema = {
+    static ref validator: Validator = {
         let schema = include_str!("schema/config.json");
         let schema_value: serde_json::Value =
             serde_json::from_str(schema).expect("Failed to parse config schema");
-        JSONSchema::options()
-            .with_draft(Draft::Draft7)
-            .compile(&schema_value)
-            .expect("Failed to compile JSON schema")
+
+        jsonschema::validator_for(&schema_value).expect("Invalid schema")
     };
 }
 
@@ -110,13 +108,9 @@ pub(crate) fn validate_config(content: &str) -> Result<()> {
     };
 
     // Validate against schema
-    let validation = CONFIG_SCHEMA.validate(&value);
-    if let Err(errors) = validation {
-        let error_messages: Vec<String> = errors.map(|error| format!("- {}", error)).collect();
-        return Err(anyhow!(
-            "Config validation failed:\n{}",
-            error_messages.join("\n")
-        ));
+    let validation = validator.validate(&value);
+    if let Err(validation_err) = validation {
+        return Err(anyhow!("Config validation failed: {}", validation_err));
     }
 
     // Additional validation for file paths
