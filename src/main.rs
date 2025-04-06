@@ -246,6 +246,21 @@ async fn main() -> anyhow::Result<()> {
                 let mut cache = tool_to_plugin.write().await;
                 for tool in parsed.tools {
                     log::info!("Saving tool {}/{} to cache", plugin_cfg.name, tool.name);
+                    // Check if the tool name already exists in another plugin
+                    if let Some(existing_plugin) = cache.get(&tool.name) {
+                        if existing_plugin != &plugin_cfg.name {
+                            log::error!(
+                                "Tool name collision detected: {} is provided by both {} and {} plugins",
+                                tool.name,
+                                existing_plugin,
+                                plugin_cfg.name
+                            );
+                            panic!(
+                                "Tool name collision detected: {} is provided by both {} and {} plugins",
+                                tool.name, existing_plugin, plugin_cfg.name
+                            );
+                        }
+                    }
                     cache.insert(tool.name, plugin_cfg.name.clone());
                 }
             }
