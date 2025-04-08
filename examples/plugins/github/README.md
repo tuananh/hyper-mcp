@@ -2,6 +2,8 @@
 
 [src](https://github.com/dylibso/mcp.run-servlets/tree/main/servlets/github)
 
+You can interact with GitHub via various tools available in this plugin: branches, repo, gist, issues, files, etc...
+
 ## Usage
 
 ```json
@@ -9,7 +11,7 @@
     "plugins": [
         {
             "name": "github",
-            "path": "/home/anh/Code/hyper-mcp/examples/plugins/github/dist/plugin.wasm",
+            "path": "oci://ghcr.io/tuananh/github-plugin:latest",
             "runtime_config": {
                 "allowed_hosts": [
                     "api.github.com"
