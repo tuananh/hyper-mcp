@@ -1,10 +1,21 @@
+<div align="center">
+
+[![Rust](https://img.shields.io/badge/rust-%23000000.svg?logo=rust&logoColor=white)](https://crates.io/crates/hyper-mcp)
+[![License](https://img.shields.io/badge/License-Apache--2.0-blue)](#license)
+[![Issues - daytona](https://img.shields.io/github/issues/tuananh/hyper-mcp)](https://github.com/tuananh/hyper-mcp/issues)
+<!-- ![GitHub Release](https://img.shields.io/github/v/release/tuananh/hyper-mcp) -->
+
+</div>
+
+<div align="center">
+  <picture>
+    <img alt="hyper-mcp logo" src="./assets/logo.png" width="50%">
+  </picture>
+</div>
+
 # hyper-mcp
 
 A fast, secure MCP server that extends its capabilities through WebAssembly plugins.
-
-<p align="center">
-  <img src="./assets/ai.jpg" style="height: 300px;">
-</p>
 
 ## What is it?
 
