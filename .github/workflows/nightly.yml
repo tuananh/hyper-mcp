@@ -10,7 +10,7 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  build-plugins:
+  build-plugin-images:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -42,7 +42,7 @@ jobs:
             docker push $image_name
           done
 
-  build-and-release:
+  build-binaries:
     runs-on: ubuntu-latest
     permissions:
       contents: write
