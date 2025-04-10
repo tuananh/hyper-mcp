@@ -131,7 +131,8 @@ We maintain several example plugins to get you started:
 - [fs](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/fs): File system operations (Rust)
 - [github](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/fs): GitHub plugin (Go)
 - [eval-py](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/eval-py): Evaluate Python code with RustPython (Rust)
-- [arxiv](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/eval-py): Search & download arXiv papers (Rust)
+- [arxiv](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/arxiv): Search & download arXiv papers (Rust)
+- [memory](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/memory): Let you store & retrive memory, powered by SQLite (Rust)
 
 ### Community-built plugins
 
