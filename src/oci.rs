@@ -203,6 +203,7 @@ pub async fn pull_and_extract_oci_image(
             vec![
                 manifest::IMAGE_MANIFEST_MEDIA_TYPE,
                 manifest::IMAGE_DOCKER_LAYER_GZIP_MEDIA_TYPE,
+                manifest::IMAGE_LAYER_GZIP_MEDIA_TYPE,
             ],
         )
         .await?;
