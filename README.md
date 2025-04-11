@@ -38,7 +38,7 @@ Built with security-first mindset:
 - Memory-safe execution with resource limits
 - Secure plugin distribution through container registries
 - Fine-grained access control for host functions
-- OCI plugin images are signed at publish time and verified at load time with sigstore.
+- OCI plugin images are signed at publish time and verified at load time with [sigstore](https://www.sigstore.dev/).
 
 ## Getting Started
 
@@ -174,3 +174,7 @@ docker push your-registry/plugin-name
 ## License
 
 [Apache 2.0](./LICENSE)
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=tuananh/hyper-mcp&type=Date)](https://www.star-history.com/#tuananh/hyper-mcp&Date)
