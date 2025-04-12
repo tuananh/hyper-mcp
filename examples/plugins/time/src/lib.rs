@@ -80,8 +80,6 @@ pub(crate) fn call(input: types::CallToolRequest) -> Result<types::CallToolResul
     }
 }
 
-// Called by mcpx to understand how and why to use this tool.
-// Note: these imports are NOT available in this context: config_get
 pub(crate) fn describe() -> Result<types::ListToolsResult, Error> {
     Ok(types::ListToolsResult { tools: vec![ToolDescription {
         name: "time".into(),

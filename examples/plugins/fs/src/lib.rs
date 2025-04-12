@@ -444,7 +444,6 @@ fn get_file_info(input: CallToolRequest) -> Result<CallToolResult, Error> {
     }
 }
 
-// Called by mcpx to understand how and why to use this tool
 pub(crate) fn describe() -> Result<ListToolsResult, Error> {
     Ok(ListToolsResult {
         tools: vec![
