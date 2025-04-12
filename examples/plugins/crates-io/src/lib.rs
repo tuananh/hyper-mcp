@@ -62,7 +62,7 @@ fn crate_info(input: CallToolRequest) -> Result<CallToolResult, Error> {
                 "homepage": crate_info.get("homepage").and_then(|v| v.as_str()),
                 "keywords": crate_info.get("keywords").and_then(|v| v.as_array()),
                 "categories": crate_info.get("categories").and_then(|v| v.as_array()),
-                "license": crate_info.get("license").and_then(|v| v.as_str()),
+                "license": json["versions"].as_array().and_then(|v| v.first()).and_then(|v| v["license"].as_str()),
                 "created_at": crate_info.get("created_at").and_then(|v| v.as_str()),
                 "updated_at": crate_info.get("updated_at").and_then(|v| v.as_str()),
             });
