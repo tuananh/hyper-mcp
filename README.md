@@ -136,6 +136,7 @@ We maintain several example plugins to get you started:
 - [sqlite](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/memory): Interact with SQLite (Rust)
 - [crates-io](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/crates-io): Get crate general information, check crate latest version (Rust)
 - [gomodule](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/gomodule): Get Go modules info, version (Rust)
+- [qdrant](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/qdrant): keeping & retrieving memories to Qdrant vector search engine (Rust)
 
 ### Community-built plugins
 
