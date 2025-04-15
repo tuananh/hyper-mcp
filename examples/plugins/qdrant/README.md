@@ -1,4 +1,4 @@
-# qdrant-rag
+# qdrant
 
 A plugin that provides RAG (Retrieval Augmented Generation) capabilities using Qdrant vector database and FastEmbed for embeddings.
 
@@ -17,14 +17,17 @@ The plugin requires the following configuration:
 {
   "plugins": [
     {
-      "name": "qdrant-rag",
-      "path": "oci://ghcr.io/tuananh/qdrant-rag-plugin:latest",
+      "name": "qdrant",
+      "path": "oci://ghcr.io/tuananh/qdrant-plugin:latest",
       "runtime_config": {
-        "qdrant_url": "http://localhost:6334",
-        "embedding_model": "BAAI/bge-small-en-v1.5",
+        "QDRANT_URL": "http://localhost:6334",
+        // "embedding_model": "BAAI/bge-small-en-v1.5",
         "allowed_hosts": [
-          "localhost:6334"
-        ]
+          "localhost:6333"
+        ],
+        "env_vars": {
+          "QDRANT_URL": "http://localhost:6333"
+        }
       }
     }
   ]
@@ -34,6 +37,7 @@ The plugin requires the following configuration:
 ## Tools
 
 ### 1. embed_text
+
 Generates vector embeddings for given text using the configured model.
 
 ```json
@@ -43,6 +47,7 @@ Generates vector embeddings for given text using the configured model.
 ```
 
 ### 2. qdrant_store
+
 Stores a document with its vector embedding in Qdrant. The vector can be provided or will be automatically generated.
 
 ```json
@@ -54,6 +59,7 @@ Stores a document with its vector embedding in Qdrant. The vector can be provide
 ```
 
 ### 3. qdrant_find
+
 Finds similar documents using either text query or vector similarity search.
 
 ```json
@@ -66,6 +72,7 @@ Finds similar documents using either text query or vector similarity search.
 ```
 
 ## Features
+
 - Automatic collection creation with appropriate vector dimensions
 - Lazy loading of embedding model
 - Support for both text and vector-based queries
@@ -74,6 +81,7 @@ Finds similar documents using either text query or vector similarity search.
 - Thread-safe model instance management
 
 ## Dependencies
+
 - FastEmbed for text embeddings
 - Qdrant for vector storage and similarity search
 - Tokio for async runtime
