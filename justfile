@@ -42,5 +42,11 @@ debug:
 gh-list-repos:
     RUST_LOG=info echo '{ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": "gh-list-repos", "arguments": { "username": "tuananh", "type": "all" } } }' | {{hyper_mcp_bin}}
 
+qdrant-store:
+    RUST_LOG=info echo '{ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": "qdrant_store", "arguments": { "collection_name": "test", "text": "Hello, world!", "vector": [0.1, 0.1, 0.1, 0.1] } } }' | {{hyper_mcp_bin}}
+
+qdrant-find:
+    RUST_LOG=info echo '{ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": "qdrant_find", "arguments": { "collection_name": "test", "vector": [0.1, 0.1, 0.1, 0.1] } } }' | {{hyper_mcp_bin}}
+
 run:
     cargo run

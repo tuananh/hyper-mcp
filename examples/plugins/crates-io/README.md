@@ -4,10 +4,9 @@ A plugin that fetches crate information and latest versions from crates.io.
 
 ## What it does
 
-Provides three main functionalities:
+Provides two main functionalities:
 1. `crates_io_latest_version`: Fetches the latest version of multiple crates
 2. `crates_io_crate_info`: Fetches detailed information about multiple crates including description, downloads, repository, documentation, etc.
-3. `crates_io_docs`: Fetches and extracts readable documentation content for multiple crates
 
 ## Usage
 
@@ -48,16 +47,6 @@ Call with:
 }
 ```
 
-3. Get documentation content for multiple crates:
-```json
-{
-  "name": "crates_io_docs",
-  "params": {
-    "crate_names": "serde,tokio,clap"
-  }
-}
-```
-
 Returns:
 - For `crates_io_latest_version`: A JSON object mapping crate names to their latest version numbers
 - For `crates_io_crate_info`: An array of JSON objects containing detailed crate information for each crate, including:
@@ -72,4 +61,3 @@ Returns:
   - Categories
   - License
   - Creation and update timestamps
-- For `crates_io_docs`: Documentation content for each requested crate in a readable format
