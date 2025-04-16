@@ -1,13 +1,13 @@
 # qdrant
 
-A plugin that provides RAG (Retrieval Augmented Generation) capabilities using Qdrant vector database and FastEmbed for embeddings.
+A plugin that provides vector similarity search capabilities using Qdrant vector database.
 
 ## What it does
 
 This plugin provides three main functionalities:
-1. Generate embeddings for text using FastEmbed
-2. Store documents with their embeddings in Qdrant
-3. Search for similar documents using either text queries or vector embeddings
+1. Create collections with configurable vector dimensions
+2. Store documents with their vector embeddings in Qdrant
+3. Search for similar documents using vector embeddings
 
 ## Configuration
 
@@ -21,7 +21,6 @@ The plugin requires the following configuration:
       "path": "oci://ghcr.io/tuananh/qdrant-plugin:latest",
       "runtime_config": {
         "QDRANT_URL": "http://localhost:6334",
-        // "embedding_model": "BAAI/bge-small-en-v1.5",
         "allowed_hosts": [
           "localhost:6333"
         ],
@@ -36,53 +35,50 @@ The plugin requires the following configuration:
 
 ## Tools
 
-### 1. embed_text
+### 1. qdrant_create_collection
 
-Generates vector embeddings for given text using the configured model.
+Creates a new collection in Qdrant with specified vector dimensions.
 
 ```json
 {
-  "text": "Your text here"
+  "collection_name": "my_documents",
+  "vector_size": 384  // Optional, defaults to 384
 }
 ```
 
 ### 2. qdrant_store
 
-Stores a document with its vector embedding in Qdrant. The vector can be provided or will be automatically generated.
+Stores a document with its vector embedding in Qdrant.
 
 ```json
 {
   "collection_name": "my_documents",
   "text": "Your document text",
-  "vector": [0.1, 0.2, ...] // Optional: will be generated if not provided
+  "vector": [0.1, 0.2, ...] // Vector dimensions must match collection's vector_size
 }
 ```
 
 ### 3. qdrant_find
 
-Finds similar documents using either text query or vector similarity search.
+Finds similar documents using vector similarity search.
 
 ```json
 {
   "collection_name": "my_documents",
-  "query": "Your search query",  // Either query or vector must be provided
-  "vector": [0.1, 0.2, ...],    // Either query or vector must be provided
+  "vector": [0.1, 0.2, ...],    // Vector dimensions must match collection's vector_size
   "limit": 5                    // Optional, defaults to 5
 }
 ```
 
 ## Features
 
-- Automatic collection creation with appropriate vector dimensions
-- Lazy loading of embedding model
-- Support for both text and vector-based queries
+- Configurable vector dimensions per collection
+- Support for vector-based queries
 - Configurable similarity search results limit
 - Uses cosine similarity for vector matching
-- Thread-safe model instance management
+- Thread-safe operations
 
 ## Dependencies
 
-- FastEmbed for text embeddings
 - Qdrant for vector storage and similarity search
-- Tokio for async runtime
 - UUID for document identification

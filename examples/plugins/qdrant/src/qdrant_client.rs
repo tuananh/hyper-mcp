@@ -1,10 +1,10 @@
+use anyhow::{Error, anyhow, bail};
 use extism_pdk::*;
-use anyhow::{anyhow, bail, Error};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_json::{Map, Value};
-use std::fmt::Display;
 use std::collections::BTreeMap;
+use std::fmt::Display;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -96,10 +96,10 @@ impl QdrantClient {
     /// Shortcut functions
     pub fn collection_info(&self, collection_name: &str) -> Result<u64, Error> {
         let v = self.collection_info_api(collection_name)?;
-        Ok(v.get("result")
+        v.get("result")
             .and_then(|v| v.get("points_count"))
             .and_then(|v| v.as_u64())
-            .ok_or_else(|| anyhow!("[qdrant] Invalid response format"))?)
+            .ok_or_else(|| anyhow!("[qdrant] Invalid response format"))
     }
 
     pub fn create_collection(&self, collection_name: &str, size: u32) -> Result<(), Error> {
@@ -148,11 +148,7 @@ impl QdrantClient {
         Ok(())
     }
 
-    pub fn upsert_points(
-        &self,
-        collection_name: &str,
-        points: Vec<Point>,
-    ) -> Result<(), Error> {
+    pub fn upsert_points(&self, collection_name: &str, points: Vec<Point>) -> Result<(), Error> {
         let params = json!({
             "points": points,
         });
@@ -177,25 +173,25 @@ impl QdrantClient {
         });
 
         match self.search_points_api(collection_name, &params) {
-            Ok(v) => {
-                match v.get("result") {
-                    Some(v) => match v.as_array() {
-                        Some(rs) => {
-                            let mut sps: Vec<ScoredPoint> = Vec::<ScoredPoint>::new();
-                            for r in rs {
-                                let sp: ScoredPoint = serde_json::from_value(r.clone())?;
-                                sps.push(sp);
-                            }
-                            Ok(sps)
+            Ok(v) => match v.get("result") {
+                Some(v) => match v.as_array() {
+                    Some(rs) => {
+                        let mut sps: Vec<ScoredPoint> = Vec::<ScoredPoint>::new();
+                        for r in rs {
+                            let sp: ScoredPoint = serde_json::from_value(r.clone())?;
+                            sps.push(sp);
                         }
-                        None => {
-                            bail!("[qdrant] The value corresponding to the 'result' key is not an array.")
-                        }
-                    },
-                    None => Ok(vec![])
-                }
-            }
-            Err(_) => Ok(vec![])
+                        Ok(sps)
+                    }
+                    None => {
+                        bail!(
+                            "[qdrant] The value corresponding to the 'result' key is not an array."
+                        )
+                    }
+                },
+                None => Ok(vec![]),
+            },
+            Err(_) => Ok(vec![]),
         }
     }
 
@@ -207,10 +203,11 @@ impl QdrantClient {
         });
 
         let v = self.get_points_api(collection_name, &params)?;
-        let rs = v.get("result")
+        let rs = v
+            .get("result")
             .and_then(|v| v.as_array())
             .ok_or_else(|| anyhow!("[qdrant] Invalid response format"))?;
-        
+
         let mut ps: Vec<Point> = Vec::new();
         for r in rs {
             let p: Point = serde_json::from_value(r.clone())?;
@@ -221,7 +218,8 @@ impl QdrantClient {
 
     pub fn get_point(&self, collection_name: &str, id: &PointId) -> Result<Point, Error> {
         let v = self.get_point_api(collection_name, id)?;
-        let r = v.get("result")
+        let r = v
+            .get("result")
             .ok_or_else(|| anyhow!("[qdrant] Invalid response format"))?;
         Ok(serde_json::from_value(r.clone())?)
     }
@@ -236,18 +234,21 @@ impl QdrantClient {
     /// REST API functions
     pub fn collection_info_api(&self, collection_name: &str) -> Result<Value, Error> {
         let url = format!("{}/collections/{}", self.url_base, collection_name);
-        
+
         let mut headers = BTreeMap::new();
         headers.insert("Content-Type".to_string(), "application/json".to_string());
         if let Some(api_key) = &self.api_key {
             headers.insert("api-key".to_string(), api_key.clone());
         }
 
-        let response: HttpResponse = http::request::<()>(&HttpRequest {
-            url: url.clone(),
-            headers,
-            method: Some("GET".to_string()),
-        }, None)?;
+        let response: HttpResponse = http::request::<()>(
+            &HttpRequest {
+                url: url.clone(),
+                headers,
+                method: Some("GET".to_string()),
+            },
+            None,
+        )?;
 
         let json: Value = serde_json::from_slice(&response.body())?;
         Ok(json)
@@ -266,14 +267,18 @@ impl QdrantClient {
         }
 
         let body = serde_json::to_vec(params)?;
-        let response = http::request::<Vec<u8>>(&HttpRequest {
-            url: url.clone(),
-            headers,
-            method: Some("PUT".to_string()),
-        }, Some(body))?;
+        let response = http::request::<Vec<u8>>(
+            &HttpRequest {
+                url: url.clone(),
+                headers,
+                method: Some("PUT".to_string()),
+            },
+            Some(body),
+        )?;
 
         let json: Value = serde_json::from_slice(&response.body())?;
-        let success = json.get("result")
+        let success = json
+            .get("result")
             .and_then(|v| v.as_bool())
             .ok_or_else(|| anyhow!("[qdrant] Invalid response format"))?;
         Ok(success)
@@ -287,14 +292,17 @@ impl QdrantClient {
             headers.insert("api-key".to_string(), api_key.clone());
         }
 
-        let response = http::request::<()>(&HttpRequest {
-            url: url.clone(),
-            headers,
-            method: Some("GET".to_string()),
-        }, None)?;
+        let response = http::request::<()>(
+            &HttpRequest {
+                url: url.clone(),
+                headers,
+                method: Some("GET".to_string()),
+            },
+            None,
+        )?;
 
         let json: Value = serde_json::from_slice(&response.body())?;
-        
+
         match json.get("result") {
             Some(result) => match result.get("collections") {
                 Some(collections) => match collections.as_array() {
@@ -306,8 +314,10 @@ impl QdrantClient {
                             }
                         }
                         Ok(collection_names)
-                    },
-                    None => bail!("[qdrant] The value corresponding to the 'collections' key is not an array."),
+                    }
+                    None => bail!(
+                        "[qdrant] The value corresponding to the 'collections' key is not an array."
+                    ),
                 },
                 None => bail!("[qdrant] The given key 'collections' does not exist."),
             },
@@ -323,16 +333,20 @@ impl QdrantClient {
             headers.insert("api-key".to_string(), api_key.clone());
         }
 
-        let response = http::request::<()>(&HttpRequest {
-            url: url.clone(),
-            headers,
-            method: Some("GET".to_string()),
-        }, None)?;
+        let response = http::request::<()>(
+            &HttpRequest {
+                url: url.clone(),
+                headers,
+                method: Some("GET".to_string()),
+            },
+            None,
+        )?;
 
         let json: Value = serde_json::from_slice(&response.body())?;
         match json.get("result") {
             Some(result) => {
-                let exists = result.get("exists")
+                let exists = result
+                    .get("exists")
                     .and_then(|v| v.as_bool())
                     .ok_or_else(|| anyhow!("[qdrant] Invalid response format"))?;
                 Ok(exists)
@@ -349,24 +363,24 @@ impl QdrantClient {
             headers.insert("api-key".to_string(), api_key.clone());
         }
 
-        let response = http::request::<()>(&HttpRequest {
-            url: url.clone(),
-            headers,
-            method: Some("DELETE".to_string()),
-        }, None)?;
+        let response = http::request::<()>(
+            &HttpRequest {
+                url: url.clone(),
+                headers,
+                method: Some("DELETE".to_string()),
+            },
+            None,
+        )?;
 
         let json: Value = serde_json::from_slice(&response.body())?;
-        let success = json.get("result")
+        let success = json
+            .get("result")
             .and_then(|v| v.as_bool())
             .ok_or_else(|| anyhow!("[qdrant] Invalid response format"))?;
         Ok(success)
     }
 
-    pub fn upsert_points_api(
-        &self,
-        collection_name: &str,
-        params: &Value,
-    ) -> Result<(), Error> {
+    pub fn upsert_points_api(&self, collection_name: &str, params: &Value) -> Result<(), Error> {
         let url = format!(
             "{}/collections/{}/points?wait=true",
             self.url_base, collection_name,
@@ -378,14 +392,18 @@ impl QdrantClient {
         }
 
         let body = serde_json::to_vec(params)?;
-        let response = http::request(&HttpRequest {
-            url: url.clone(),
-            headers,
-            method: Some("PUT".to_string()),
-        }, Some(&body))?;
+        let response = http::request(
+            &HttpRequest {
+                url: url.clone(),
+                headers,
+                method: Some("PUT".to_string()),
+            },
+            Some(&body),
+        )?;
 
         let json: Value = serde_json::from_slice(&response.body())?;
-        let status = json.get("status")
+        let status = json
+            .get("status")
             .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow!("[qdrant] Invalid response format"))?;
 
@@ -399,11 +417,7 @@ impl QdrantClient {
         }
     }
 
-    pub fn search_points_api(
-        &self,
-        collection_name: &str,
-        params: &Value,
-    ) -> Result<Value, Error> {
+    pub fn search_points_api(&self, collection_name: &str, params: &Value) -> Result<Value, Error> {
         let url = format!(
             "{}/collections/{}/points/search",
             self.url_base, collection_name,
@@ -415,21 +429,20 @@ impl QdrantClient {
         }
 
         let body = serde_json::to_vec(params)?;
-        let response = http::request(&HttpRequest {
-            url: url.clone(),
-            headers,
-            method: Some("POST".to_string()),
-        }, Some(&body))?;
+        let response = http::request(
+            &HttpRequest {
+                url: url.clone(),
+                headers,
+                method: Some("POST".to_string()),
+            },
+            Some(&body),
+        )?;
 
         let json: Value = serde_json::from_slice(&response.body())?;
         Ok(json)
     }
 
-    pub fn get_points_api(
-        &self,
-        collection_name: &str,
-        params: &Value,
-    ) -> Result<Value, Error> {
+    pub fn get_points_api(&self, collection_name: &str, params: &Value) -> Result<Value, Error> {
         let url = format!("{}/collections/{}/points", self.url_base, collection_name);
         let mut headers = BTreeMap::new();
         headers.insert("Content-Type".to_string(), "application/json".to_string());
@@ -438,11 +451,14 @@ impl QdrantClient {
         }
 
         let body = serde_json::to_vec(params)?;
-        let response = http::request(&HttpRequest {
-            url: url.clone(),
-            headers,
-            method: Some("POST".to_string()),
-        }, Some(&body))?;
+        let response = http::request(
+            &HttpRequest {
+                url: url.clone(),
+                headers,
+                method: Some("POST".to_string()),
+            },
+            Some(&body),
+        )?;
 
         let json: Value = serde_json::from_slice(&response.body())?;
         Ok(json)
@@ -459,21 +475,20 @@ impl QdrantClient {
             headers.insert("api-key".to_string(), api_key.clone());
         }
 
-        let response = http::request::<()>(&HttpRequest {
-            url: url.clone(),
-            headers,
-            method: Some("GET".to_string()),
-        }, None)?;
+        let response = http::request::<()>(
+            &HttpRequest {
+                url: url.clone(),
+                headers,
+                method: Some("GET".to_string()),
+            },
+            None,
+        )?;
 
         let json: Value = serde_json::from_slice(&response.body())?;
         Ok(json)
     }
 
-    pub fn delete_points_api(
-        &self,
-        collection_name: &str,
-        params: &Value,
-    ) -> Result<(), Error> {
+    pub fn delete_points_api(&self, collection_name: &str, params: &Value) -> Result<(), Error> {
         let url = format!(
             "{}/collections/{}/points/delete?wait=true",
             self.url_base, collection_name,
@@ -485,11 +500,14 @@ impl QdrantClient {
         }
 
         let body = serde_json::to_vec(params)?;
-        let response = http::request(&HttpRequest {
-            url: url.clone(),
-            headers,
-            method: Some("POST".to_string()),
-        }, Some(&body))?;
+        let response = http::request(
+            &HttpRequest {
+                url: url.clone(),
+                headers,
+                method: Some("POST".to_string()),
+            },
+            Some(&body),
+        )?;
 
         Ok(())
     }
