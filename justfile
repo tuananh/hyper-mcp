@@ -1,5 +1,8 @@
 hyper_mcp_bin := `realpath ./target/debug/hyper-mcp`
 
+initialize:
+    echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}},"clientInfo":{"name":"ExampleClient","version":"1.0.0"}}}' | {{hyper_mcp_bin}}
+
 ping:
     echo '{ "jsonrpc": "2.0", "id": 1, "method": "ping" }' | {{hyper_mcp_bin}}
 
