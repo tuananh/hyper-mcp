@@ -27,6 +27,7 @@ hyper-mcp makes it easy to add AI capabilities to your applications. It works wi
 - Distribute plugins via standard OCI registries (like Docker Hub)
 - Built on [Extism](https://github.com/extism/extism) for rock-solid plugin support
 - Lightweight enough for resource-constrained environments
+- Support both `stdio` and SSE transport.
 - Deploy anywhere: serverless, edge, mobile, IoT devices
 - Cross-platform compatibility out of the box
 
@@ -86,7 +87,7 @@ Built with security-first mindset:
 $ hyper-mcp
 ```
 
-- By default, it will use `stdio/` transport. If you want to use SSE, use flag `--transport sse`.
+- By default, it will use `stdio` transport. If you want to use SSE, use flag `--transport sse`.
 - If you want to debug, use `RUST_LOG=info`.
 - If you're loading unsigned OCI plugin, you need to set `insecure_skip_signature` to `false` in your config file.
 
@@ -149,17 +150,18 @@ To publish a plugin:
 FROM rust:1.86-slim AS builder
 
 RUN rustup target add wasm32-wasip1 && \
-    rustup component add rust-std --target wasm32-wasip1
+    rustup component add rust-std --target wasm32-wasip1 && \
+    cargo install cargo-auditable
 
 WORKDIR /workspace
 COPY . .
 RUN cargo fetch
-RUN cargo build --release --target wasm32-wasip1
+RUN cargo auditable build --release --target wasm32-wasip1
 
-# copy wasm to final image
 FROM scratch
 WORKDIR /
-COPY --from=builder /workspace/target/wasm32-wasip1/release/your-plugin.wasm /plugin.wasm
+COPY --from=builder /workspace/target/wasm32-wasip1/release/plugin.wasm /plugin.wasm
+
 ```
 
 Then build and push:

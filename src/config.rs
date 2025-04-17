@@ -31,11 +31,18 @@ pub async fn load_config(path: &Path) -> Result<Config> {
             path.display()
         ));
     }
+    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
     let content = tokio::fs::read_to_string(path)
         .await
         .with_context(|| format!("Failed to read config file at {}", path.display()))?;
 
-    serde_json::from_str(&content)
-        .with_context(|| format!("Failed to parse config file at {}", path.display()))
+    let config = match ext {
+        "json" => serde_json::from_str(&content)?,
+        "yaml" | "yml" => serde_yaml::from_str(&content)?,
+        "toml" => toml::from_str(&content)?,
+        _ => return Err(anyhow::anyhow!("Unsupported config format: {}", ext)),
+    };
+
+    Ok(config)
 }

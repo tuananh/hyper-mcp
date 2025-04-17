@@ -32,6 +32,8 @@ sigstore = { version = "0.11.0", features = ["cosign", "verify", "bundle", "full
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 rmcp = { git = "https://github.com/modelcontextprotocol/rust-sdk", rev = "9d6f9a2e0d199c6c7f2731bd6f8f7143af060a6b", features = ["server", "transport-io", "transport-sse", "transport-sse-server"] }
+serde_yaml = "0.9.34"
+toml = "0.8.20"
 
 [[bin]]
 name = "hyper-mcp"
