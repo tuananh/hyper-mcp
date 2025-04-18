@@ -36,6 +36,7 @@ docker run -d \
     -p 3001:3001 \
     -v /home/ubuntu/config.yml:/app/config.yml \
     ghcr.io/tuananh/hyper-mcp \
+    --transport sse \
     --config-file /app/config.yaml
 ```
 
