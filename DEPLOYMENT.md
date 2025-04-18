@@ -11,6 +11,23 @@ Pull the image
 docker pull ghcr.io/tuananh/hyper-mcp:latest
 ```
 
+Create a sample config file like this, assume at `/home/ubuntu/config.yml`
+
+```json
+{
+  "plugins": [
+    {
+      "name": "time",
+      "path": "oci://ghcr.io/tuananh/time-plugin:latest"
+    },
+    {
+      "name": "qr-code",
+      "path": "oci://ghcr.io/tuananh/qrcode-plugin:latest"
+    }
+  ]
+}
+```
+
 Run the container
 
 ```sh
