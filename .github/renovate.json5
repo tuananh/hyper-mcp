@@ -1,48 +1,49 @@
 {
-  // Schema reference for Renovate configuration
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  
-  // Extend the base configuration
-  "extends": [
-    "config:base"
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'config:recommended',
   ],
-  
-  // Run updates every Monday
-  "schedule": ["on monday"],
-  
-  // Package-specific rules
-  "packageRules": [
-    // Pin GitHub Actions to immutable SHAs.
+  schedule: [
+    'on monday',
+  ],
+  packageRules: [
     {
-      matchDepTypes: ["action"],
+      matchDepTypes: [
+        'action',
+      ],
       pinDigests: true,
     },
-    // Annotate GitHub Actions SHAs with a SemVer version.
     {
-      extends: ["helpers:pinGitHubActionDigests"],
-      extractVersion: "^(?<version>v?\\d+\\.\\d+\\.\\d+)$",
-      versioning: "regex:^v?(?<major>\\d+)(\\.(?<minor>\\d+)\\.(?<patch>\\d+))?$",
+      extends: [
+        'helpers:pinGitHubActionDigests',
+      ],
+      extractVersion: '^(?<version>v?\\d+\\.\\d+\\.\\d+)$',
+      versioning: 'regex:^v?(?<major>\\d+)(\\.(?<minor>\\d+)\\.(?<patch>\\d+))?$',
     },
     {
-      // GitHub Actions specific rules
-      "matchManagers": ["github-actions"],
-      "groupName": "GitHub Actions",
-      "labels": ["dependencies", "github-actions"],
-      "commitMessagePrefix": "github-actions"
+      matchManagers: [
+        'github-actions',
+      ],
+      groupName: 'GitHub Actions',
+      labels: [
+        'dependencies',
+        'github-actions',
+      ],
+      commitMessagePrefix: 'github-actions',
     },
     {
-      // Rust dependencies specific rules
-      "matchManagers": ["cargo"],
-      "groupName": "Rust dependencies",
-      "labels": ["dependencies", "rust"],
-      "commitMessagePrefix": "rust"
-    }
+      matchManagers: [
+        'cargo',
+      ],
+      groupName: 'Rust dependencies',
+      labels: [
+        'dependencies',
+        'rust',
+      ],
+      commitMessagePrefix: 'rust',
+    },
   ],
-  
-  // Rate limiting for PR creation
-  "prHourlyLimit": 4,
-  "prConcurrentLimit": 16,
-  
-  // Enable dependency dashboard for better visibility
-  "dependencyDashboard": true
-} 
+  prHourlyLimit: 4,
+  prConcurrentLimit: 16,
+  dependencyDashboard: true,
+}
