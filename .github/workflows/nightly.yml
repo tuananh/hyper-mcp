@@ -10,7 +10,7 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  build-plugin-images:
+  build-oci-images:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -35,13 +35,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push plugins
+      - name: Build and push
         run: |
+          echo "Building hyper-mcp image"
+          hyper_mcp_image="${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:latest"
+          docker build -t $hyper_mcp_image .
+          docker push $hyper_mcp_image
+          cosign sign --yes $hyper_mcp_image
+
           for plugin in examples/plugins/*/; do
             plugin_name=$(basename $plugin)
             echo "Building plugin: $plugin_name"
             
-            image_name="${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin:latest"
+            image_name="${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin:nightly"
             docker build -t $image_name $plugin
             docker push $image_name
             
@@ -49,7 +55,23 @@ jobs:
           done
 
   build-binaries:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-24.04-arm
+            arch: aarch64
+            target: aarch64-unknown-linux-gnu
+          # - os: macos-13
+          #   arch: x86_64
+          #   target: x86_64-apple-darwin
+          - os: macos-latest
+            arch: aarch64
+            target: aarch64-apple-darwin
+
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: write
       packages: write
@@ -63,28 +85,32 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      
+      - run: cargo install cargo-auditable
 
       - name: Install compilation targets
-        run: |
-          rustup target add x86_64-unknown-linux-gnu
+        run: rustup target add ${{ matrix.target }}
 
-      - name: Build for AMD64
-        run: cargo build --release --target x86_64-unknown-linux-gnu
+      - name: Build
+        run: cargo auditable build --target ${{ matrix.target }} --release
 
       # TODO: figure out how to do cross build
-
       - name: Create archives and checksums
         run: |
           # Create directories for archives
-          mkdir -p dist/amd64
+          mkdir -p dist/${{ matrix.target }}
           
-          cp target/x86_64-unknown-linux-gnu/release/hyper-mcp dist/amd64/
-          cd dist/amd64 && tar -czf ../hyper-mcp-linux-amd64.tar.gz hyper-mcp
+          cp target/${{ matrix.target }}/release/hyper-mcp dist/${{ matrix.target }}/
+          cd dist/${{ matrix.target }} && tar -czf ../hyper-mcp-${{ matrix.target }}.tar.gz hyper-mcp
           cd ..
           
           {
-            echo "hyper-mcp-linux-amd64.tar.gz:"
-            sha256sum hyper-mcp-linux-amd64.tar.gz
+            echo "hyper-mcp-${{ matrix.target }}.tar.gz:"
+            if command -v sha256sum >/dev/null 2>&1; then
+              sha256sum hyper-mcp-${{ matrix.target }}.tar.gz
+            else
+              shasum -a 256 hyper-mcp-${{ matrix.target }}.tar.gz
+            fi
           } > checksums.txt
 
       - name: Delete existing nightly release
@@ -99,16 +125,16 @@ jobs:
           draft: false
           prerelease: true
           files: |
-            dist/hyper-mcp-linux-amd64.tar.gz
+            dist/hyper-mcp-${{ matrix.target }}.tar.gz
             dist/checksums.txt
           body: |
             Nightly build from `main` branch.
             
             This release includes:
-            - hyper-mcp binary for Linux AMD64
-            - Plugin images available at ghcr.io/${{ github.repository_owner }}/<plugin-name>-plugin:latest
+            - hyper-mcp binaries for Linux & macOS
+            - Plugin images available at `ghcr.io/${{ github.repository_owner }}/<plugin-name>-plugin:nightly`
             
             All container images are signed with Cosign. Verify with:
             ```bash
-            cosign verify ghcr.io/${{ github.repository_owner }}/<plugin-name>-plugin:latest
+            cosign verify ghcr.io/${{ github.repository_owner }}/<plugin-name>-plugin:nightly
             ```
