@@ -37,8 +37,11 @@ docker run -d \
     -v /home/ubuntu/config.yml:/app/config.yml \
     ghcr.io/tuananh/hyper-mcp \
     --transport sse \
+    --bind-address 0.0.0.0:3001 \
     --config-file /app/config.yaml
 ```
+
+Note that we need to bind to `--bind-address 0.0.0.0:3001` in order to access from the host.
 
 ## GCP Cloud Run
 
