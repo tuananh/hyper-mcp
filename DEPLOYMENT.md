@@ -45,7 +45,65 @@ Note that we need to bind to `--bind-address 0.0.0.0:3001` in order to access fr
 
 ## GCP Cloud Run
 
-To be updated
+### Prerequisites
+- Google Cloud SDK installed
+- Terraform installed
+- A GCP project with Cloud Run and Secret Manager APIs enabled
+
+### Configuration
+
+1. Create a `terraform.tfvars` file with your configuration in `iac` folder:
+
+```hcl
+name       = "hyper-mcp"
+project_id = "your-project-id"
+region     = "asia-southeast1"  # or your preferred region
+```
+
+2. Create a config file in Secret Manager:
+
+The config file will be automatically created and managed by Terraform. Here's an example of what it contains:
+
+```json
+{
+  "plugins": [
+    {
+      "name": "time",
+      "path": "oci://ghcr.io/tuananh/time-plugin:latest"
+    },
+    {
+      "name": "qr-code",
+      "path": "oci://ghcr.io/tuananh/qrcode-plugin:latest"
+    }
+  ]
+}
+```
+
+3. Deploy using Terraform:
+
+```sh
+cd iac
+terraform init
+terraform plan
+terraform apply
+```
+
+The service will be deployed with:
+- Port 3001 exposed
+- Config file mounted at `/app/config.json`
+- Public access enabled
+- SSE transport mode
+- Bound to 0.0.0.0:3001
+
+### Accessing the Service
+
+After deployment, you can get the service URL using:
+
+```sh
+terraform output url
+```
+
+The service will be accessible at the provided URL.
 
 ## Cloudflare Workers
 
