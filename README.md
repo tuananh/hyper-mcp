@@ -100,8 +100,7 @@ You can configure hyper-mcp either globally for all projects or specifically for
 {
   "mcpServers": {
     "hyper-mcp": {
-      "command": "/path/to/hyper-mcp",
-      "args": [""]
+      "command": "/path/to/hyper-mcp"
     }
   }
 }
