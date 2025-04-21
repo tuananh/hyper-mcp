@@ -35,7 +35,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build and push hyper-mcp
         run: |
           echo "Building hyper-mcp image"
           hyper_mcp_image="${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:nightly"

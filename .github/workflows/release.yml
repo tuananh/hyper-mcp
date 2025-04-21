@@ -15,7 +15,7 @@ jobs:
     permissions:
       contents: write
       packages: write
-      id-token: write
+      id-token: write # needed for keyless signing
 
     steps:
       - uses: actions/checkout@v4
@@ -39,15 +39,15 @@ jobs:
       - name: Build and push hyper-mcp
         run: |
           TAG=${GITHUB_REF#refs/tags/}
-          base_image="${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp"
-          echo "Building and tagging: $base_image:$TAG and $base_image:latest"
-          docker build -t $base_image:$TAG -t $base_image:latest .
+          hyper_mcp_image="${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp"
+          echo "Building and tagging: $hyper_mcp_image:$TAG and $hyper_mcp_image:latest"
+          docker build -t $hyper_mcp_image:$TAG -t $hyper_mcp_image:latest .
           
-          docker push $base_image:$TAG
-          docker push $base_image:latest
+          docker push $hyper_mcp_image:$TAG
+          docker push $hyper_mcp_image:latest
 
-          cosign sign --yes $base_image:$TAG
-          cosign sign --yes $base_image:latest
+          cosign sign --yes $hyper_mcp_image:$TAG
+          cosign sign --yes $hyper_mcp_image:latest
 
           for plugin in examples/plugins/*/; do
             plugin_name=$(basename $plugin)
