@@ -35,10 +35,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build and push hyper-mcp
         run: |
           echo "Building hyper-mcp image"
-          hyper_mcp_image="${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:latest"
+          hyper_mcp_image="${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:nightly"
           docker build -t $hyper_mcp_image .
           docker push $hyper_mcp_image
           cosign sign --yes $hyper_mcp_image
@@ -54,7 +54,27 @@ jobs:
             cosign sign --yes $image_name
           done
 
+  # do this before we build nightly binaries
+  prepare-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set nightly tag to latest main
+        run: |
+          git fetch origin main
+          git tag -f nightly origin/main
+          git push -f origin nightly
+
+      - name: Delete existing nightly release
+        run: gh release delete nightly --yes || true
+
   build-binaries:
+    needs: prepare-release
     strategy:
       matrix:
         include:
@@ -113,9 +133,6 @@ jobs:
             fi
           } > checksums.txt
 
-      - name: Delete existing nightly release
-        run: gh release delete nightly --yes || true
-
       - name: Create new nightly release
         id: create_release
         uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
@@ -132,9 +149,11 @@ jobs:
             
             This release includes:
             - hyper-mcp binaries for Linux & macOS
-            - Plugin images available at `ghcr.io/${{ github.repository_owner }}/<plugin-name>-plugin:nightly`
+            - hyper-mcp container image: `ghcr.io/${{ github.repository_owner }}/hyper-mcp:nightly`
+            - Plugin images: `ghcr.io/${{ github.repository_owner }}/<plugin-name>-plugin:nightly`
             
             All container images are signed with Cosign. Verify with:
             ```bash
+            cosign verify ghcr.io/${{ github.repository_owner }}/hyper-mcp:nightly
             cosign verify ghcr.io/${{ github.repository_owner }}/<plugin-name>-plugin:nightly
             ```
