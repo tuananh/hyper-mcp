@@ -1,0 +1,140 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Match tags like v1.0.0, v2.1.3 etc.
+
+env:
+  CARGO_TERM_COLOR: always
+  REGISTRY: ghcr.io
+
+jobs:
+  build-oci-images:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.8.1
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # tag images with both git tag & latest
+      - name: Build and push hyper-mcp
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          base_image="${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp"
+          echo "Building and tagging: $base_image:$TAG and $base_image:latest"
+          docker build -t $base_image:$TAG -t $base_image:latest .
+          
+          docker push $base_image:$TAG
+          docker push $base_image:latest
+
+          cosign sign --yes $base_image:$TAG
+          cosign sign --yes $base_image:latest
+
+          for plugin in examples/plugins/*/; do
+            plugin_name=$(basename $plugin)
+            plugin_base_image="${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin"
+
+            docker build -t $plugin_base_image:$TAG -t $plugin_base_image:latest $plugin
+
+            docker push $plugin_base_image:$TAG
+            docker push $plugin_base_image:latest
+            
+            cosign sign --yes $plugin_base_image:$TAG
+            cosign sign --yes $plugin_base_image:latest
+          done
+
+  build-binaries:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-24.04-arm
+            arch: aarch64
+            target: aarch64-unknown-linux-gnu
+          - os: macos-latest
+            arch: aarch64
+            target: aarch64-apple-darwin
+
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - run: cargo install cargo-auditable
+
+      - name: Install target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Build
+        run: cargo auditable build --target ${{ matrix.target }} --release
+
+      - name: Create archives and checksums
+        run: |
+          mkdir -p dist/${{ matrix.target }}
+          cp target/${{ matrix.target }}/release/hyper-mcp dist/${{ matrix.target }}/
+          cd dist/${{ matrix.target }} && tar -czf ../hyper-mcp-${{ matrix.target }}.tar.gz hyper-mcp
+          cd ..
+
+          {
+            echo "hyper-mcp-${{ matrix.target }}.tar.gz:"
+            if command -v sha256sum >/dev/null 2>&1; then
+              sha256sum hyper-mcp-${{ matrix.target }}.tar.gz
+            else
+              shasum -a 256 hyper-mcp-${{ matrix.target }}.tar.gz
+            fi
+          } > checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            dist/hyper-mcp-${{ matrix.target }}.tar.gz
+            dist/checksums.txt
+          body: |
+            Final release for `${{ github.ref_name }}`.
+
+            Included:
+            - hyper-mcp binaries for Linux & macOS
+            - hyper-mcp container image: `ghcr.io/${{ github.repository_owner }}/hyper-mcp:${{ github.ref_name }}`
+            - Plugin images: `ghcr.io/${{ github.repository_owner }}/<plugin-name>-plugin:${{ github.ref_name }}`
+
+            All container images are signed with Cosign. Verify with:
+            ```bash
+            cosign verify ghcr.io/${{ github.repository_owner }}/hyper-mcp:${{ github.ref_name }}
+            cosign verify ghcr.io/${{ github.repository_owner }}/<plugin-name>-plugin:${{ github.ref_name }}
+            ```
