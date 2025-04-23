@@ -643,11 +643,14 @@ fn create_merge_request(input: CallToolRequest) -> Result<CallToolResult, Error>
         args.get("target_branch"),
     ) {
         let url = format!("{}/projects/{}/merge_requests", gitlab_url, project_id);
-        
+
         // Use provided title if present, otherwise use default format
-        let title = args.get("title").and_then(|t| t.as_str()).map(|t| t.to_string())
+        let title = args
+            .get("title")
+            .and_then(|t| t.as_str())
+            .map(|t| t.to_string())
             .unwrap_or_else(|| format!("Merge {} into {}", source_branch, target_branch));
-        
+
         let body = json!({
             "source_branch": source_branch,
             "target_branch": target_branch,
@@ -711,20 +714,17 @@ fn create_snippet(input: CallToolRequest) -> Result<CallToolResult, Error> {
     let args = input.params.arguments.clone().unwrap_or_default();
     let (token, gitlab_url) = get_gitlab_config()?;
 
-    if let (
-        Some(Value::String(title)),
-        Some(Value::String(content)),
-    ) = (
-        args.get("title"),
-        args.get("content"),
-    ) {
+    if let (Some(Value::String(title)), Some(Value::String(content))) =
+        (args.get("title"), args.get("content"))
+    {
         let url = format!("{}/snippets", gitlab_url);
-        
+
         // Get visibility from args or default to "private"
-        let visibility = args.get("visibility")
+        let visibility = args
+            .get("visibility")
             .and_then(|v| v.as_str())
             .unwrap_or("private");
-            
+
         let body = json!({
             "title": title,
             "file_name": format!("{}.txt", title.to_lowercase().replace(" ", "_")),
@@ -795,10 +795,7 @@ fn update_snippet(input: CallToolRequest) -> Result<CallToolResult, Error> {
         args.get("title"),
         args.get("content"),
     ) {
-        let url = format!(
-            "{}/snippets/{}",
-            gitlab_url, snippet_id
-        );
+        let url = format!("{}/snippets/{}", gitlab_url, snippet_id);
         let body = json!({
             "title": title,
             "file_name": format!("{}.txt", title.to_lowercase().replace(" ", "_")),
@@ -860,10 +857,7 @@ fn get_snippet(input: CallToolRequest) -> Result<CallToolResult, Error> {
     let (token, gitlab_url) = get_gitlab_config()?;
 
     if let Some(Value::String(snippet_id)) = args.get("snippet_id") {
-        let url = format!(
-            "{}/snippets/{}",
-            gitlab_url, snippet_id
-        );
+        let url = format!("{}/snippets/{}", gitlab_url, snippet_id);
 
         let mut headers = BTreeMap::new();
         headers.insert("PRIVATE-TOKEN".to_string(), token);
@@ -919,10 +913,7 @@ fn delete_snippet(input: CallToolRequest) -> Result<CallToolResult, Error> {
     let (token, gitlab_url) = get_gitlab_config()?;
 
     if let Some(Value::String(snippet_id)) = args.get("snippet_id") {
-        let url = format!(
-            "{}/snippets/{}",
-            gitlab_url, snippet_id
-        );
+        let url = format!("{}/snippets/{}", gitlab_url, snippet_id);
 
         let mut headers = BTreeMap::new();
         headers.insert("PRIVATE-TOKEN".to_string(), token);
