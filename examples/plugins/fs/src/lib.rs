@@ -14,8 +14,7 @@ use serde_json::json;
 
 pub(crate) fn call(input: CallToolRequest) -> Result<CallToolResult, Error> {
     info!("call: {:?}", input);
-    let args = input.params.arguments.clone().unwrap_or_default();
-    match args.get("operation").and_then(|v| v.as_str()).unwrap_or_default() {
+    match input.params.name.as_str() {
         "read_file" => read_file(input),
         "read_multiple_files" => read_multiple_files(input),
         "write_file" => write_file(input),

@@ -11,4 +11,4 @@ RUN cargo auditable build --release --target wasm32-wasip1
 
 FROM scratch
 WORKDIR /
-COPY --from=builder /workspace/target/wasm32-wasip1/release/fs.wasm /plugin.wasm
+COPY --from=builder /workspace/target/wasm32-wasip1/release/plugin.wasm /plugin.wasm
