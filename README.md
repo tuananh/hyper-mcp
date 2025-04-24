@@ -89,7 +89,7 @@ $ hyper-mcp
 
 - By default, it will use `stdio` transport. If you want to use SSE, use flag `--transport sse`.
 - If you want to debug, use `RUST_LOG=info`.
-- If you're loading unsigned OCI plugin, you need to set `insecure_skip_signature` to `false` in your config file.
+- If you're loading unsigned OCI plugin, you need to set `insecure_skip_signature` to `true` in your config file.
 
 ## Using with Cursor IDE
 
