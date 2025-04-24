@@ -1,7 +1,8 @@
-mod pdk;
 mod embedded;
+mod pdk;
 
 use ab_glyph::{Font, FontArc, PxScale, ScaleFont};
+use base64::Engine;
 use extism_pdk::*;
 use image::Rgba;
 use imageproc::drawing::draw_text_mut;
@@ -11,7 +12,6 @@ use pdk::types::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::io::Cursor;
-use base64;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Example {
@@ -149,11 +149,18 @@ fn generate_meme(input: CallToolRequest) -> Result<CallToolResult, Error> {
     } else if embedded::get_template_image(template_id, "default.png").is_some() {
         "default.png"
     } else {
-        return Err(Error::msg(format!("No default template image found for {}", template_id)));
+        return Err(Error::msg(format!(
+            "No default template image found for {}",
+            template_id
+        )));
     };
-    
-    let image_data = embedded::get_template_image(template_id, image_name)
-        .ok_or_else(|| Error::msg(format!("Template image {} {} not found", template_id, image_name)))?;
+
+    let image_data = embedded::get_template_image(template_id, image_name).ok_or_else(|| {
+        Error::msg(format!(
+            "Template image {} {} not found",
+            template_id, image_name
+        ))
+    })?;
 
     let mut image = image::load_from_memory(image_data)?.to_rgba8();
     let (image_width, image_height) = image.dimensions();
@@ -178,12 +185,14 @@ fn generate_meme(input: CallToolRequest) -> Result<CallToolResult, Error> {
 
         // Calculate initial desired height based on image dimensions and config scale
         let desired_height = (image_height as f32 * text_config.scale_y).max(1.0);
-        
+
         // Calculate maximum available width based on alignment
         let padding = image_width as f32 * 0.05; // 5% padding on each side
         let available_width = match text_config.align.as_str() {
             "center" => image_width as f32 - (2.0 * padding),
-            "left" => image_width as f32 - (image_width as f32 * text_config.anchor_x) - (2.0 * padding),
+            "left" => {
+                image_width as f32 - (image_width as f32 * text_config.anchor_x) - (2.0 * padding)
+            }
             "right" => (image_width as f32 * text_config.anchor_x) - (2.0 * padding),
             _ => image_width as f32 - (2.0 * padding),
         };
@@ -200,7 +209,8 @@ fn generate_meme(input: CallToolRequest) -> Result<CallToolResult, Error> {
                 + (image_width as f32 * text_config.anchor_x))
                 .max(padding) as i32,
             "left" => ((image_width as f32 * text_config.anchor_x) + padding) as i32,
-            "right" => ((image_width as f32 * text_config.anchor_x) - text_width - padding).max(padding) as i32,
+            "right" => ((image_width as f32 * text_config.anchor_x) - text_width - padding)
+                .max(padding) as i32,
             _ => ((image_width as f32 - text_width) / 2.0).max(padding) as i32,
         };
 
@@ -225,7 +235,7 @@ fn generate_meme(input: CallToolRequest) -> Result<CallToolResult, Error> {
             text: None,
             mime_type: Some("image/png".to_string()),
             r#type: ContentType::Image,
-            data: Some(base64::encode(&output_bytes)),
+            data: Some(base64::engine::general_purpose::STANDARD.encode(&output_bytes)),
         }],
     })
 }
@@ -258,14 +268,19 @@ fn color_to_rgba(color: &str) -> Rgba<u8> {
     }
 }
 
-fn calculate_max_scale(font: &FontArc, text: &str, target_width: f32, desired_height: f32) -> PxScale {
+fn calculate_max_scale(
+    font: &FontArc,
+    text: &str,
+    target_width: f32,
+    desired_height: f32,
+) -> PxScale {
     let initial_scale = PxScale::from(desired_height);
     let initial_width = calculate_text_width(font, text, initial_scale);
-    
+
     if initial_width <= target_width {
         return initial_scale;
     }
-    
+
     // Scale down proportionally if text is too wide
     let scale_factor = target_width / initial_width;
     PxScale::from(desired_height * scale_factor)
@@ -275,7 +290,7 @@ impl TemplateConfig {
     fn load(template_id: &str) -> Result<Self, Error> {
         let config_contents = embedded::get_template_config(template_id)
             .ok_or_else(|| Error::msg(format!("Template {} not found", template_id)))?;
-            
+
         let config: TemplateConfig = serde_yaml::from_str(config_contents)
             .map_err(|e| Error::msg(format!("Failed to parse config: {}", e)))?;
         Ok(config)

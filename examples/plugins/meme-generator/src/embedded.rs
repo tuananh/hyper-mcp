@@ -19,9 +19,13 @@ pub fn get_template_config(template_id: &str) -> Option<&'static str> {
         "atis" => Some(include_str!("../assets/templates/atis/config.yml")),
         "away" => Some(include_str!("../assets/templates/away/config.yml")),
         "awesome" => Some(include_str!("../assets/templates/awesome/config.yml")),
-        "awesome-awkward" => Some(include_str!("../assets/templates/awesome-awkward/config.yml")),
+        "awesome-awkward" => Some(include_str!(
+            "../assets/templates/awesome-awkward/config.yml"
+        )),
         "awkward" => Some(include_str!("../assets/templates/awkward/config.yml")),
-        "awkward-awesome" => Some(include_str!("../assets/templates/awkward-awesome/config.yml")),
+        "awkward-awesome" => Some(include_str!(
+            "../assets/templates/awkward-awesome/config.yml"
+        )),
         "bad" => Some(include_str!("../assets/templates/bad/config.yml")),
         "badchoice" => Some(include_str!("../assets/templates/badchoice/config.yml")),
         "balloon" => Some(include_str!("../assets/templates/balloon/config.yml")),
@@ -41,7 +45,9 @@ pub fn get_template_config(template_id: &str) -> Option<&'static str> {
         "buzz" => Some(include_str!("../assets/templates/buzz/config.yml")),
         "cake" => Some(include_str!("../assets/templates/cake/config.yml")),
         "captain" => Some(include_str!("../assets/templates/captain/config.yml")),
-        "captain-america" => Some(include_str!("../assets/templates/captain-america/config.yml")),
+        "captain-america" => Some(include_str!(
+            "../assets/templates/captain-america/config.yml"
+        )),
         "cb" => Some(include_str!("../assets/templates/cb/config.yml")),
         "cbb" => Some(include_str!("../assets/templates/cbb/config.yml")),
         "cbg" => Some(include_str!("../assets/templates/cbg/config.yml")),
@@ -142,7 +148,9 @@ pub fn get_template_config(template_id: &str) -> Option<&'static str> {
         "officespace" => Some(include_str!("../assets/templates/officespace/config.yml")),
         "older" => Some(include_str!("../assets/templates/older/config.yml")),
         "oprah" => Some(include_str!("../assets/templates/oprah/config.yml")),
-        "panik-kalm-panik" => Some(include_str!("../assets/templates/panik-kalm-panik/config.yml")),
+        "panik-kalm-panik" => Some(include_str!(
+            "../assets/templates/panik-kalm-panik/config.yml"
+        )),
         "patrick" => Some(include_str!("../assets/templates/patrick/config.yml")),
         "perfection" => Some(include_str!("../assets/templates/perfection/config.yml")),
         "persian" => Some(include_str!("../assets/templates/persian/config.yml")),
@@ -213,7 +221,7 @@ pub fn get_template_config(template_id: &str) -> Option<&'static str> {
         "yodawg" => Some(include_str!("../assets/templates/yodawg/config.yml")),
         "yuno" => Some(include_str!("../assets/templates/yuno/config.yml")),
         "zero-wing" => Some(include_str!("../assets/templates/zero-wing/config.yml")),
-        _ => None
+        _ => None,
     }
 }
 
@@ -224,22 +232,40 @@ pub fn get_template_image(template_id: &str, image_name: &str) -> Option<&'stati
         ("ackbar", "default.jpg") => Some(include_bytes!("../assets/templates/ackbar/default.jpg")),
         ("afraid", "default.jpg") => Some(include_bytes!("../assets/templates/afraid/default.jpg")),
         ("agnes", "default.jpg") => Some(include_bytes!("../assets/templates/agnes/default.jpg")),
-        ("aint-got-time", "default.jpg") => Some(include_bytes!("../assets/templates/aint-got-time/default.jpg")),
+        ("aint-got-time", "default.jpg") => Some(include_bytes!(
+            "../assets/templates/aint-got-time/default.jpg"
+        )),
         ("ams", "default.jpg") => Some(include_bytes!("../assets/templates/ams/default.jpg")),
         ("ants", "default.jpg") => Some(include_bytes!("../assets/templates/ants/default.jpg")),
         ("apcr", "default.jpg") => Some(include_bytes!("../assets/templates/apcr/default.jpg")),
-        ("astronaut", "default.png") => Some(include_bytes!("../assets/templates/astronaut/default.png")),
+        ("astronaut", "default.png") => {
+            Some(include_bytes!("../assets/templates/astronaut/default.png"))
+        }
         ("atis", "default.jpg") => Some(include_bytes!("../assets/templates/atis/default.jpg")),
         ("away", "default.jpg") => Some(include_bytes!("../assets/templates/away/default.jpg")),
-        ("awesome", "default.jpg") => Some(include_bytes!("../assets/templates/awesome/default.jpg")),
-        ("awesome-awkward", "default.jpg") => Some(include_bytes!("../assets/templates/awesome-awkward/default.jpg")),
-        ("awkward", "default.jpg") => Some(include_bytes!("../assets/templates/awkward/default.jpg")),
-        ("awkward-awesome", "default.jpg") => Some(include_bytes!("../assets/templates/awkward-awesome/default.jpg")),
+        ("awesome", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/awesome/default.jpg"))
+        }
+        ("awesome-awkward", "default.jpg") => Some(include_bytes!(
+            "../assets/templates/awesome-awkward/default.jpg"
+        )),
+        ("awkward", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/awkward/default.jpg"))
+        }
+        ("awkward-awesome", "default.jpg") => Some(include_bytes!(
+            "../assets/templates/awkward-awesome/default.jpg"
+        )),
         ("bad", "default.jpg") => Some(include_bytes!("../assets/templates/bad/default.jpg")),
-        ("badchoice", "default.jpg") => Some(include_bytes!("../assets/templates/badchoice/default.jpg")),
-        ("balloon", "default.jpg") => Some(include_bytes!("../assets/templates/balloon/default.jpg")),
+        ("badchoice", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/badchoice/default.jpg"))
+        }
+        ("balloon", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/balloon/default.jpg"))
+        }
         ("bd", "default.jpg") => Some(include_bytes!("../assets/templates/bd/default.jpg")),
-        ("because", "default.png") => Some(include_bytes!("../assets/templates/because/default.png")),
+        ("because", "default.png") => {
+            Some(include_bytes!("../assets/templates/because/default.png"))
+        }
         ("bender", "default.jpg") => Some(include_bytes!("../assets/templates/bender/default.jpg")),
         ("bihw", "default.jpg") => Some(include_bytes!("../assets/templates/bihw/default.jpg")),
         ("bilbo", "default.jpg") => Some(include_bytes!("../assets/templates/bilbo/default.jpg")),
@@ -257,8 +283,12 @@ pub fn get_template_image(template_id: &str, image_name: &str) -> Option<&'stati
         ("buzz", "default.gif") => Some(include_bytes!("../assets/templates/buzz/default.gif")),
         ("cake", "default.jpg") => Some(include_bytes!("../assets/templates/cake/default.jpg")),
         ("cake", "default.gif") => Some(include_bytes!("../assets/templates/cake/default.gif")),
-        ("captain", "default.jpg") => Some(include_bytes!("../assets/templates/captain/default.jpg")),
-        ("captain-america", "default.jpg") => Some(include_bytes!("../assets/templates/captain-america/default.jpg")),
+        ("captain", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/captain/default.jpg"))
+        }
+        ("captain-america", "default.jpg") => Some(include_bytes!(
+            "../assets/templates/captain-america/default.jpg"
+        )),
         ("cb", "default.jpg") => Some(include_bytes!("../assets/templates/cb/default.jpg")),
         ("cbb", "default.jpg") => Some(include_bytes!("../assets/templates/cbb/default.jpg")),
         ("cbg", "default.jpg") => Some(include_bytes!("../assets/templates/cbg/default.jpg")),
@@ -268,16 +298,28 @@ pub fn get_template_image(template_id: &str, image_name: &str) -> Option<&'stati
         ("cheems", "default.jpg") => Some(include_bytes!("../assets/templates/cheems/default.jpg")),
         ("chosen", "default.jpg") => Some(include_bytes!("../assets/templates/chosen/default.jpg")),
         ("cmm", "default.png") => Some(include_bytes!("../assets/templates/cmm/default.png")),
-        ("country", "default.jpg") => Some(include_bytes!("../assets/templates/country/default.jpg")),
-        ("crazypills", "default.png") => Some(include_bytes!("../assets/templates/crazypills/default.png")),
+        ("country", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/country/default.jpg"))
+        }
+        ("crazypills", "default.png") => {
+            Some(include_bytes!("../assets/templates/crazypills/default.png"))
+        }
         ("crow", "default.jpg") => Some(include_bytes!("../assets/templates/crow/default.jpg")),
-        ("cryingfloor", "default.jpg") => Some(include_bytes!("../assets/templates/cryingfloor/default.jpg")),
+        ("cryingfloor", "default.jpg") => Some(include_bytes!(
+            "../assets/templates/cryingfloor/default.jpg"
+        )),
         ("db", "default.jpg") => Some(include_bytes!("../assets/templates/db/default.jpg")),
         ("dbg", "default.jpg") => Some(include_bytes!("../assets/templates/dbg/default.jpg")),
         ("dg", "default.jpg") => Some(include_bytes!("../assets/templates/dg/default.jpg")),
-        ("disastergirl", "default.jpg") => Some(include_bytes!("../assets/templates/disastergirl/default.jpg")),
-        ("dodgson", "default.jpg") => Some(include_bytes!("../assets/templates/dodgson/default.jpg")),
-        ("dodgson", "default.gif") => Some(include_bytes!("../assets/templates/dodgson/default.gif")),
+        ("disastergirl", "default.jpg") => Some(include_bytes!(
+            "../assets/templates/disastergirl/default.jpg"
+        )),
+        ("dodgson", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/dodgson/default.jpg"))
+        }
+        ("dodgson", "default.gif") => {
+            Some(include_bytes!("../assets/templates/dodgson/default.gif"))
+        }
         ("doge", "bark.jpg") => Some(include_bytes!("../assets/templates/doge/bark.jpg")),
         ("doge", "pet.jpg") => Some(include_bytes!("../assets/templates/doge/pet.jpg")),
         ("doge", "growl.jpg") => Some(include_bytes!("../assets/templates/doge/growl.jpg")),
@@ -291,7 +333,9 @@ pub fn get_template_image(template_id: &str, image_name: &str) -> Option<&'stati
         ("drake", "default.png") => Some(include_bytes!("../assets/templates/drake/default.png")),
         ("drake", "padding.jpg") => Some(include_bytes!("../assets/templates/drake/padding.jpg")),
         ("drake", "no.jpg") => Some(include_bytes!("../assets/templates/drake/no.jpg")),
-        ("drowning", "default.png") => Some(include_bytes!("../assets/templates/drowning/default.png")),
+        ("drowning", "default.png") => {
+            Some(include_bytes!("../assets/templates/drowning/default.png"))
+        }
         ("drunk", "default.jpg") => Some(include_bytes!("../assets/templates/drunk/default.jpg")),
         ("ds", "maga.jpg") => Some(include_bytes!("../assets/templates/ds/maga.jpg")),
         ("ds", "default.jpg") => Some(include_bytes!("../assets/templates/ds/default.jpg")),
@@ -302,55 +346,91 @@ pub fn get_template_image(template_id: &str, image_name: &str) -> Option<&'stati
         ("ermg", "default.jpg") => Some(include_bytes!("../assets/templates/ermg/default.jpg")),
         ("exit", "default.png") => Some(include_bytes!("../assets/templates/exit/default.png")),
         ("fa", "default.jpg") => Some(include_bytes!("../assets/templates/fa/default.jpg")),
-        ("facepalm", "default.jpg") => Some(include_bytes!("../assets/templates/facepalm/default.jpg")),
+        ("facepalm", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/facepalm/default.jpg"))
+        }
         ("fbf", "default.jpg") => Some(include_bytes!("../assets/templates/fbf/default.jpg")),
-        ("feelsgood", "default.png") => Some(include_bytes!("../assets/templates/feelsgood/default.png")),
+        ("feelsgood", "default.png") => {
+            Some(include_bytes!("../assets/templates/feelsgood/default.png"))
+        }
         ("fetch", "default.jpg") => Some(include_bytes!("../assets/templates/fetch/default.jpg")),
         ("fine", "default.png") => Some(include_bytes!("../assets/templates/fine/default.png")),
         ("fine", "default.gif") => Some(include_bytes!("../assets/templates/fine/default.gif")),
-        ("firsttry", "default.png") => Some(include_bytes!("../assets/templates/firsttry/default.png")),
+        ("firsttry", "default.png") => {
+            Some(include_bytes!("../assets/templates/firsttry/default.png"))
+        }
         ("fmr", "default.jpg") => Some(include_bytes!("../assets/templates/fmr/default.jpg")),
-        ("friends", "default.png") => Some(include_bytes!("../assets/templates/friends/default.png")),
+        ("friends", "default.png") => {
+            Some(include_bytes!("../assets/templates/friends/default.png"))
+        }
         ("fry", "default.png") => Some(include_bytes!("../assets/templates/fry/default.png")),
         ("fry", "default.gif") => Some(include_bytes!("../assets/templates/fry/default.gif")),
         ("fwp", "default.jpg") => Some(include_bytes!("../assets/templates/fwp/default.jpg")),
-        ("gandalf", "default.jpg") => Some(include_bytes!("../assets/templates/gandalf/default.jpg")),
+        ("gandalf", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/gandalf/default.jpg"))
+        }
         ("gb", "default.jpg") => Some(include_bytes!("../assets/templates/gb/default.jpg")),
         ("gears", "default.jpg") => Some(include_bytes!("../assets/templates/gears/default.jpg")),
         ("genie", "default.png") => Some(include_bytes!("../assets/templates/genie/default.png")),
         ("ggg", "default.jpg") => Some(include_bytes!("../assets/templates/ggg/default.jpg")),
-        ("glasses", "default.png") => Some(include_bytes!("../assets/templates/glasses/default.png")),
+        ("glasses", "default.png") => {
+            Some(include_bytes!("../assets/templates/glasses/default.png"))
+        }
         ("gone", "default.jpg") => Some(include_bytes!("../assets/templates/gone/default.jpg")),
         ("grave", "default.png") => Some(include_bytes!("../assets/templates/grave/default.png")),
         ("gru", "default.jpg") => Some(include_bytes!("../assets/templates/gru/default.jpg")),
-        ("grumpycat", "default.jpg") => Some(include_bytes!("../assets/templates/grumpycat/default.jpg")),
+        ("grumpycat", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/grumpycat/default.jpg"))
+        }
         ("hagrid", "default.jpg") => Some(include_bytes!("../assets/templates/hagrid/default.jpg")),
-        ("happening", "default.jpg") => Some(include_bytes!("../assets/templates/happening/default.jpg")),
-        ("happening", "default.gif") => Some(include_bytes!("../assets/templates/happening/default.gif")),
+        ("happening", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/happening/default.jpg"))
+        }
+        ("happening", "default.gif") => {
+            Some(include_bytes!("../assets/templates/happening/default.gif"))
+        }
         ("harold", "default.jpg") => Some(include_bytes!("../assets/templates/harold/default.jpg")),
-        ("headaches", "default.png") => Some(include_bytes!("../assets/templates/headaches/default.png")),
-        ("hipster", "default.jpg") => Some(include_bytes!("../assets/templates/hipster/default.jpg")),
+        ("headaches", "default.png") => {
+            Some(include_bytes!("../assets/templates/headaches/default.png"))
+        }
+        ("hipster", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/hipster/default.jpg"))
+        }
         ("home", "default.jpg") => Some(include_bytes!("../assets/templates/home/default.jpg")),
-        ("icanhas", "default.jpg") => Some(include_bytes!("../assets/templates/icanhas/default.jpg")),
-        ("imsorry", "default.jpg") => Some(include_bytes!("../assets/templates/imsorry/default.jpg")),
+        ("icanhas", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/icanhas/default.jpg"))
+        }
+        ("imsorry", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/imsorry/default.jpg"))
+        }
         ("inigo", "default.jpg") => Some(include_bytes!("../assets/templates/inigo/default.jpg")),
-        ("interesting", "default.jpg") => Some(include_bytes!("../assets/templates/interesting/default.jpg")),
+        ("interesting", "default.jpg") => Some(include_bytes!(
+            "../assets/templates/interesting/default.jpg"
+        )),
         ("ive", "default.png") => Some(include_bytes!("../assets/templates/ive/default.png")),
         ("iw", "default.png") => Some(include_bytes!("../assets/templates/iw/default.png")),
         ("jd", "default.jpg") => Some(include_bytes!("../assets/templates/jd/default.jpg")),
-        ("jetpack", "default.jpg") => Some(include_bytes!("../assets/templates/jetpack/default.jpg")),
+        ("jetpack", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/jetpack/default.jpg"))
+        }
         ("jim", "default.png") => Some(include_bytes!("../assets/templates/jim/default.png")),
         ("joker", "default.jpg") => Some(include_bytes!("../assets/templates/joker/default.jpg")),
         ("jw", "default.png") => Some(include_bytes!("../assets/templates/jw/default.png")),
         ("jw", "alternate.png") => Some(include_bytes!("../assets/templates/jw/alternate.png")),
         ("keanu", "default.jpg") => Some(include_bytes!("../assets/templates/keanu/default.jpg")),
         ("kermit", "default.jpg") => Some(include_bytes!("../assets/templates/kermit/default.jpg")),
-        ("khaby-lame", "default.jpg") => Some(include_bytes!("../assets/templates/khaby-lame/default.jpg")),
+        ("khaby-lame", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/khaby-lame/default.jpg"))
+        }
         ("kk", "luke.jpg") => Some(include_bytes!("../assets/templates/kk/luke.jpg")),
         ("kk", "default.jpg") => Some(include_bytes!("../assets/templates/kk/default.jpg")),
-        ("kombucha", "default.png") => Some(include_bytes!("../assets/templates/kombucha/default.png")),
+        ("kombucha", "default.png") => {
+            Some(include_bytes!("../assets/templates/kombucha/default.png"))
+        }
         ("kramer", "default.png") => Some(include_bytes!("../assets/templates/kramer/default.png")),
-        ("kramer", "seinfeld.jpg") => Some(include_bytes!("../assets/templates/kramer/seinfeld.jpg")),
+        ("kramer", "seinfeld.jpg") => {
+            Some(include_bytes!("../assets/templates/kramer/seinfeld.jpg"))
+        }
         ("leo", "default.jpg") => Some(include_bytes!("../assets/templates/leo/default.jpg")),
         ("light", "default.jpg") => Some(include_bytes!("../assets/templates/light/default.jpg")),
         ("live", "default.jpg") => Some(include_bytes!("../assets/templates/live/default.jpg")),
@@ -362,15 +442,23 @@ pub fn get_template_image(template_id: &str, image_name: &str) -> Option<&'stati
         ("mb", "default.jpg") => Some(include_bytes!("../assets/templates/mb/default.jpg")),
         ("mb", "default.gif") => Some(include_bytes!("../assets/templates/mb/default.gif")),
         ("mb", "flood.png") => Some(include_bytes!("../assets/templates/mb/flood.png")),
-        ("michael-scott", "default.jpg") => Some(include_bytes!("../assets/templates/michael-scott/default.jpg")),
+        ("michael-scott", "default.jpg") => Some(include_bytes!(
+            "../assets/templates/michael-scott/default.jpg"
+        )),
         ("midwit", "default.jpg") => Some(include_bytes!("../assets/templates/midwit/default.jpg")),
-        ("millers", "default.png") => Some(include_bytes!("../assets/templates/millers/default.png")),
-        ("mini-keanu", "default.jpg") => Some(include_bytes!("../assets/templates/mini-keanu/default.jpg")),
+        ("millers", "default.png") => {
+            Some(include_bytes!("../assets/templates/millers/default.png"))
+        }
+        ("mini-keanu", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/mini-keanu/default.jpg"))
+        }
         ("mmm", "default.jpg") => Some(include_bytes!("../assets/templates/mmm/default.jpg")),
         ("money", "default.jpg") => Some(include_bytes!("../assets/templates/money/default.jpg")),
         ("money", "default.gif") => Some(include_bytes!("../assets/templates/money/default.gif")),
         ("mordor", "default.jpg") => Some(include_bytes!("../assets/templates/mordor/default.jpg")),
-        ("morpheus", "default.jpg") => Some(include_bytes!("../assets/templates/morpheus/default.jpg")),
+        ("morpheus", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/morpheus/default.jpg"))
+        }
         ("mouth", "default.png") => Some(include_bytes!("../assets/templates/mouth/default.png")),
         ("mw", "default.jpg") => Some(include_bytes!("../assets/templates/mw/default.jpg")),
         ("nails", "default.png") => Some(include_bytes!("../assets/templates/nails/default.png")),
@@ -379,16 +467,30 @@ pub fn get_template_image(template_id: &str, image_name: &str) -> Option<&'stati
         ("noidea", "default.jpg") => Some(include_bytes!("../assets/templates/noidea/default.jpg")),
         ("ntot", "default.png") => Some(include_bytes!("../assets/templates/ntot/default.png")),
         ("oag", "default.jpg") => Some(include_bytes!("../assets/templates/oag/default.jpg")),
-        ("officespace", "default.jpg") => Some(include_bytes!("../assets/templates/officespace/default.jpg")),
+        ("officespace", "default.jpg") => Some(include_bytes!(
+            "../assets/templates/officespace/default.jpg"
+        )),
         ("older", "default.jpg") => Some(include_bytes!("../assets/templates/older/default.jpg")),
         ("oprah", "default.jpg") => Some(include_bytes!("../assets/templates/oprah/default.jpg")),
         ("oprah", "default.gif") => Some(include_bytes!("../assets/templates/oprah/default.gif")),
-        ("panik-kalm-panik", "default.png") => Some(include_bytes!("../assets/templates/panik-kalm-panik/default.png")),
-        ("patrick", "default.jpg") => Some(include_bytes!("../assets/templates/patrick/default.jpg")),
-        ("patrick", "default.gif") => Some(include_bytes!("../assets/templates/patrick/default.gif")),
-        ("perfection", "default.jpg") => Some(include_bytes!("../assets/templates/perfection/default.jpg")),
-        ("persian", "default.jpg") => Some(include_bytes!("../assets/templates/persian/default.jpg")),
-        ("philosoraptor", "default.jpg") => Some(include_bytes!("../assets/templates/philosoraptor/default.jpg")),
+        ("panik-kalm-panik", "default.png") => Some(include_bytes!(
+            "../assets/templates/panik-kalm-panik/default.png"
+        )),
+        ("patrick", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/patrick/default.jpg"))
+        }
+        ("patrick", "default.gif") => {
+            Some(include_bytes!("../assets/templates/patrick/default.gif"))
+        }
+        ("perfection", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/perfection/default.jpg"))
+        }
+        ("persian", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/persian/default.jpg"))
+        }
+        ("philosoraptor", "default.jpg") => Some(include_bytes!(
+            "../assets/templates/philosoraptor/default.jpg"
+        )),
         ("pigeon", "default.jpg") => Some(include_bytes!("../assets/templates/pigeon/default.jpg")),
         ("pooh", "default.png") => Some(include_bytes!("../assets/templates/pooh/default.png")),
         ("pool", "default.png") => Some(include_bytes!("../assets/templates/pool/default.png")),
@@ -397,87 +499,165 @@ pub fn get_template_image(template_id: &str, image_name: &str) -> Option<&'stati
         ("puffin", "default.jpg") => Some(include_bytes!("../assets/templates/puffin/default.jpg")),
         ("red", "default.jpg") => Some(include_bytes!("../assets/templates/red/default.jpg")),
         ("regret", "default.jpg") => Some(include_bytes!("../assets/templates/regret/default.jpg")),
-        ("remembers", "default.jpg") => Some(include_bytes!("../assets/templates/remembers/default.jpg")),
+        ("remembers", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/remembers/default.jpg"))
+        }
         ("reveal", "default.png") => Some(include_bytes!("../assets/templates/reveal/default.png")),
         ("right", "default.png") => Some(include_bytes!("../assets/templates/right/default.png")),
-        ("rollsafe", "default.jpg") => Some(include_bytes!("../assets/templates/rollsafe/default.jpg")),
-        ("rollsafe", "default.gif") => Some(include_bytes!("../assets/templates/rollsafe/default.gif")),
+        ("rollsafe", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/rollsafe/default.jpg"))
+        }
+        ("rollsafe", "default.gif") => {
+            Some(include_bytes!("../assets/templates/rollsafe/default.gif"))
+        }
         ("sad-biden", "down.jpg") => Some(include_bytes!("../assets/templates/sad-biden/down.jpg")),
-        ("sad-biden", "scowl.jpg") => Some(include_bytes!("../assets/templates/sad-biden/scowl.jpg")),
-        ("sad-biden", "default.jpg") => Some(include_bytes!("../assets/templates/sad-biden/default.jpg")),
-        ("sad-biden", "window.jpg") => Some(include_bytes!("../assets/templates/sad-biden/window.jpg")),
-        ("sad-boehner", "default.jpg") => Some(include_bytes!("../assets/templates/sad-boehner/default.jpg")),
-        ("sad-boehner", "really.jpg") => Some(include_bytes!("../assets/templates/sad-boehner/really.jpg")),
-        ("sad-boehner", "sad.jpg") => Some(include_bytes!("../assets/templates/sad-boehner/sad.jpg")),
-        ("sad-boehner", "frown.jpg") => Some(include_bytes!("../assets/templates/sad-boehner/frown.jpg")),
-        ("sad-boehner", "what.jpg") => Some(include_bytes!("../assets/templates/sad-boehner/what.jpg")),
-        ("sad-bush", "nervous.jpg") => Some(include_bytes!("../assets/templates/sad-bush/nervous.jpg")),
-        ("sad-bush", "facebook.jpg") => Some(include_bytes!("../assets/templates/sad-bush/facebook.jpg")),
-        ("sad-bush", "unsure.jpg") => Some(include_bytes!("../assets/templates/sad-bush/unsure.jpg")),
-        ("sad-bush", "default.jpg") => Some(include_bytes!("../assets/templates/sad-bush/default.jpg")),
+        ("sad-biden", "scowl.jpg") => {
+            Some(include_bytes!("../assets/templates/sad-biden/scowl.jpg"))
+        }
+        ("sad-biden", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/sad-biden/default.jpg"))
+        }
+        ("sad-biden", "window.jpg") => {
+            Some(include_bytes!("../assets/templates/sad-biden/window.jpg"))
+        }
+        ("sad-boehner", "default.jpg") => Some(include_bytes!(
+            "../assets/templates/sad-boehner/default.jpg"
+        )),
+        ("sad-boehner", "really.jpg") => {
+            Some(include_bytes!("../assets/templates/sad-boehner/really.jpg"))
+        }
+        ("sad-boehner", "sad.jpg") => {
+            Some(include_bytes!("../assets/templates/sad-boehner/sad.jpg"))
+        }
+        ("sad-boehner", "frown.jpg") => {
+            Some(include_bytes!("../assets/templates/sad-boehner/frown.jpg"))
+        }
+        ("sad-boehner", "what.jpg") => {
+            Some(include_bytes!("../assets/templates/sad-boehner/what.jpg"))
+        }
+        ("sad-bush", "nervous.jpg") => {
+            Some(include_bytes!("../assets/templates/sad-bush/nervous.jpg"))
+        }
+        ("sad-bush", "facebook.jpg") => {
+            Some(include_bytes!("../assets/templates/sad-bush/facebook.jpg"))
+        }
+        ("sad-bush", "unsure.jpg") => {
+            Some(include_bytes!("../assets/templates/sad-bush/unsure.jpg"))
+        }
+        ("sad-bush", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/sad-bush/default.jpg"))
+        }
         ("sad-bush", "upset.jpg") => Some(include_bytes!("../assets/templates/sad-bush/upset.jpg")),
-        ("sad-clinton", "nervous.jpg") => Some(include_bytes!("../assets/templates/sad-clinton/nervous.jpg")),
-        ("sad-clinton", "default.jpg") => Some(include_bytes!("../assets/templates/sad-clinton/default.jpg")),
-        ("sad-clinton", "ashamed.jpg") => Some(include_bytes!("../assets/templates/sad-clinton/ashamed.jpg")),
-        ("sad-clinton", "sad.jpg") => Some(include_bytes!("../assets/templates/sad-clinton/sad.jpg")),
-        ("sad-clinton", "frown.jpg") => Some(include_bytes!("../assets/templates/sad-clinton/frown.jpg")),
+        ("sad-clinton", "nervous.jpg") => Some(include_bytes!(
+            "../assets/templates/sad-clinton/nervous.jpg"
+        )),
+        ("sad-clinton", "default.jpg") => Some(include_bytes!(
+            "../assets/templates/sad-clinton/default.jpg"
+        )),
+        ("sad-clinton", "ashamed.jpg") => Some(include_bytes!(
+            "../assets/templates/sad-clinton/ashamed.jpg"
+        )),
+        ("sad-clinton", "sad.jpg") => {
+            Some(include_bytes!("../assets/templates/sad-clinton/sad.jpg"))
+        }
+        ("sad-clinton", "frown.jpg") => {
+            Some(include_bytes!("../assets/templates/sad-clinton/frown.jpg"))
+        }
         ("sad-obama", "down.jpg") => Some(include_bytes!("../assets/templates/sad-obama/down.jpg")),
-        ("sad-obama", "default.jpg") => Some(include_bytes!("../assets/templates/sad-obama/default.jpg")),
+        ("sad-obama", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/sad-obama/default.jpg"))
+        }
         ("sad-obama", "mad.jpg") => Some(include_bytes!("../assets/templates/sad-obama/mad.jpg")),
-        ("sad-obama", "really.jpg") => Some(include_bytes!("../assets/templates/sad-obama/really.jpg")),
-        ("sad-obama", "frown.jpg") => Some(include_bytes!("../assets/templates/sad-obama/frown.jpg")),
+        ("sad-obama", "really.jpg") => {
+            Some(include_bytes!("../assets/templates/sad-obama/really.jpg"))
+        }
+        ("sad-obama", "frown.jpg") => {
+            Some(include_bytes!("../assets/templates/sad-obama/frown.jpg"))
+        }
         ("sad-obama", "bow.jpg") => Some(include_bytes!("../assets/templates/sad-obama/bow.jpg")),
-        ("sadfrog", "default.jpg") => Some(include_bytes!("../assets/templates/sadfrog/default.jpg")),
-        ("saltbae", "default.jpg") => Some(include_bytes!("../assets/templates/saltbae/default.jpg")),
+        ("sadfrog", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/sadfrog/default.jpg"))
+        }
+        ("saltbae", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/saltbae/default.jpg"))
+        }
         ("same", "default.jpg") => Some(include_bytes!("../assets/templates/same/default.jpg")),
-        ("sarcasticbear", "default.jpg") => Some(include_bytes!("../assets/templates/sarcasticbear/default.jpg")),
+        ("sarcasticbear", "default.jpg") => Some(include_bytes!(
+            "../assets/templates/sarcasticbear/default.jpg"
+        )),
         ("say", "default.jpg") => Some(include_bytes!("../assets/templates/say/default.jpg")),
         ("sb", "default.jpg") => Some(include_bytes!("../assets/templates/sb/default.jpg")),
         ("scc", "default.jpg") => Some(include_bytes!("../assets/templates/scc/default.jpg")),
-        ("seagull", "default.jpg") => Some(include_bytes!("../assets/templates/seagull/default.jpg")),
+        ("seagull", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/seagull/default.jpg"))
+        }
         ("sf", "default.jpg") => Some(include_bytes!("../assets/templates/sf/default.jpg")),
         ("sk", "default.jpg") => Some(include_bytes!("../assets/templates/sk/default.jpg")),
         ("ski", "default.png") => Some(include_bytes!("../assets/templates/ski/default.png")),
         ("slap", "default.png") => Some(include_bytes!("../assets/templates/slap/default.png")),
         ("snek", "default.png") => Some(include_bytes!("../assets/templates/snek/default.png")),
         ("soa", "default.jpg") => Some(include_bytes!("../assets/templates/soa/default.jpg")),
-        ("sohappy", "default.jpg") => Some(include_bytes!("../assets/templates/sohappy/default.jpg")),
+        ("sohappy", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/sohappy/default.jpg"))
+        }
         ("sohot", "default.png") => Some(include_bytes!("../assets/templates/sohot/default.png")),
-        ("soup-nazi", "default.jpg") => Some(include_bytes!("../assets/templates/soup-nazi/default.jpg")),
+        ("soup-nazi", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/soup-nazi/default.jpg"))
+        }
         ("sparta", "default.jpg") => Some(include_bytes!("../assets/templates/sparta/default.jpg")),
-        ("spiderman", "default.jpg") => Some(include_bytes!("../assets/templates/spiderman/default.jpg")),
+        ("spiderman", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/spiderman/default.jpg"))
+        }
         ("spirit", "default.jpg") => Some(include_bytes!("../assets/templates/spirit/default.jpg")),
-        ("spongebob", "default.jpg") => Some(include_bytes!("../assets/templates/spongebob/default.jpg")),
+        ("spongebob", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/spongebob/default.jpg"))
+        }
         ("ss", "default.jpg") => Some(include_bytes!("../assets/templates/ss/default.jpg")),
         ("stew", "default.jpg") => Some(include_bytes!("../assets/templates/stew/default.jpg")),
         ("stonks", "default.png") => Some(include_bytes!("../assets/templates/stonks/default.png")),
         ("stop", "default.jpg") => Some(include_bytes!("../assets/templates/stop/default.jpg")),
-        ("stop-it", "default.jpg") => Some(include_bytes!("../assets/templates/stop-it/default.jpg")),
-        ("success", "default.jpg") => Some(include_bytes!("../assets/templates/success/default.jpg")),
+        ("stop-it", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/stop-it/default.jpg"))
+        }
+        ("success", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/success/default.jpg"))
+        }
         ("tenguy", "default.jpg") => Some(include_bytes!("../assets/templates/tenguy/default.jpg")),
-        ("toohigh", "default.jpg") => Some(include_bytes!("../assets/templates/toohigh/default.jpg")),
+        ("toohigh", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/toohigh/default.jpg"))
+        }
         ("touch", "default.jpg") => Some(include_bytes!("../assets/templates/touch/default.jpg")),
         ("tried", "default.jpg") => Some(include_bytes!("../assets/templates/tried/default.jpg")),
         ("trump", "default.jpg") => Some(include_bytes!("../assets/templates/trump/default.jpg")),
-        ("ugandanknuck", "default.jpg") => Some(include_bytes!("../assets/templates/ugandanknuck/default.jpg")),
+        ("ugandanknuck", "default.jpg") => Some(include_bytes!(
+            "../assets/templates/ugandanknuck/default.jpg"
+        )),
         ("vince", "default.jpg") => Some(include_bytes!("../assets/templates/vince/default.jpg")),
         ("wallet", "default.jpg") => Some(include_bytes!("../assets/templates/wallet/default.jpg")),
         ("waygd", "default.jpg") => Some(include_bytes!("../assets/templates/waygd/default.jpg")),
         ("waygd", "default.gif") => Some(include_bytes!("../assets/templates/waygd/default.gif")),
         ("wddth", "default.png") => Some(include_bytes!("../assets/templates/wddth/default.png")),
-        ("whatyear", "default.jpg") => Some(include_bytes!("../assets/templates/whatyear/default.jpg")),
+        ("whatyear", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/whatyear/default.jpg"))
+        }
         ("winter", "default.jpg") => Some(include_bytes!("../assets/templates/winter/default.jpg")),
         ("wishes", "blank.png") => Some(include_bytes!("../assets/templates/wishes/blank.png")),
         ("wishes", "default.png") => Some(include_bytes!("../assets/templates/wishes/default.png")),
         ("wkh", "default.jpg") => Some(include_bytes!("../assets/templates/wkh/default.jpg")),
-        ("woman-cat", "default.jpg") => Some(include_bytes!("../assets/templates/woman-cat/default.jpg")),
+        ("woman-cat", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/woman-cat/default.jpg"))
+        }
         ("wonka", "default.jpg") => Some(include_bytes!("../assets/templates/wonka/default.jpg")),
         ("worst", "default.jpg") => Some(include_bytes!("../assets/templates/worst/default.jpg")),
         ("xy", "default.jpg") => Some(include_bytes!("../assets/templates/xy/default.jpg")),
-        ("yallgot", "default.jpg") => Some(include_bytes!("../assets/templates/yallgot/default.jpg")),
+        ("yallgot", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/yallgot/default.jpg"))
+        }
         ("yodawg", "default.jpg") => Some(include_bytes!("../assets/templates/yodawg/default.jpg")),
         ("yuno", "default.jpg") => Some(include_bytes!("../assets/templates/yuno/default.jpg")),
-        ("zero-wing", "default.jpg") => Some(include_bytes!("../assets/templates/zero-wing/default.jpg")),
-        _ => None
+        ("zero-wing", "default.jpg") => {
+            Some(include_bytes!("../assets/templates/zero-wing/default.jpg"))
+        }
+        _ => None,
     }
 }
