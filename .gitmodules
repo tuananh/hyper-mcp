@@ -1,0 +1,3 @@
+[submodule "examples/plugins/meme-generator/assets"]
+	path = examples/plugins/meme-generator/assets
+	url = https://github.com/tuananh/meme-generator-assets.git

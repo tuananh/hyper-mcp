@@ -14,7 +14,7 @@ def main():
     output.append('pub const TEMPLATES_JSON: &str = include_str!("../templates.json");')
     output.append('')
     output.append('// Embed font data')
-    output.append('pub const FONT_DATA: &[u8] = include_bytes!("../fonts/TitilliumWeb-Black.ttf");')
+    output.append('pub const FONT_DATA: &[u8] = include_bytes!("../assets/fonts/TitilliumWeb-Black.ttf");')
     output.append('')
     output.append('// Function to get template config')
     output.append('pub fn get_template_config(template_id: &str) -> Option<&\'static str> {')
@@ -22,9 +22,9 @@ def main():
     
     # Add template configs
     for template_id in template_ids:
-        config_path = f'templates/{template_id}/config.yml'
+        config_path = f'assets/templates/{template_id}/config.yml'
         if os.path.exists(config_path):
-            output.append(f'        "{template_id}" => Some(include_str!("../templates/{template_id}/config.yml")),')
+            output.append(f'        "{template_id}" => Some(include_str!("../assets/templates/{template_id}/config.yml")),')
     
     output.append('        _ => None')
     output.append('    }')
@@ -37,11 +37,11 @@ def main():
     output.append('    match (template_id, image_name) {')
     
     for template_id in template_ids:
-        template_dir = f'templates/{template_id}'
+        template_dir = f'assets/templates/{template_id}'
         if os.path.exists(template_dir):
             for file in os.listdir(template_dir):
                 if file.endswith(('.jpg', '.png', '.gif')):
-                    output.append(f'        ("{template_id}", "{file}") => Some(include_bytes!("../templates/{template_id}/{file}")),')
+                    output.append(f'        ("{template_id}", "{file}") => Some(include_bytes!("../assets/templates/{template_id}/{file}")),')
     
     output.append('        _ => None')
     output.append('    }')
