@@ -9,29 +9,6 @@ use pdk::types::{
     CallToolRequest, CallToolResult, Content, ContentType, ListToolsResult, ToolDescription,
 };
 use serde_json::json;
-use url::Url;
-
-/// Helper function to handle project ID or path
-/// If the input looks like a path (contains '/'), it will be URL encoded
-/// For URLs, extracts and encodes just the path portion after the domain
-fn prepare_project_id(project_id: &str) -> String {
-    if project_id.starts_with("http://") || project_id.starts_with("https://") {
-        // For URLs, extract and encode only the path portion
-        if let Ok(url) = Url::parse(project_id) {
-            // Get the path segments after the domain, skipping the first slash
-            let path = url.path().trim_start_matches('/');
-            urlencoding::encode(path).to_string()
-        } else {
-            project_id.to_string() // Fallback if URL parsing fails
-        }
-    } else if project_id.contains('/') {
-        // For paths like "group/project" or "namespace/group/project"
-        urlencoding::encode(project_id).to_string()
-    } else {
-        // For numeric IDs or already encoded values
-        project_id.to_string()
-    }
-}
 
 fn get_gitlab_config() -> Result<(String, String), Error> {
     let token = config::get("GITLAB_TOKEN")?
@@ -40,6 +17,11 @@ fn get_gitlab_config() -> Result<(String, String), Error> {
     let url = config::get("GITLAB_URL")?.unwrap_or_else(|| "https://gitlab.com/api/v4".to_string());
 
     Ok((token, url))
+}
+
+/// Helper function to check if an HTTP status code represents success (200-299)
+fn is_success_status(status_code: u16) -> bool {
+    status_code >= 200 && status_code < 300
 }
 
 pub(crate) fn call(input: CallToolRequest) -> Result<CallToolResult, Error> {
@@ -91,8 +73,11 @@ fn create_issue(input: CallToolRequest) -> Result<CallToolResult, Error> {
         args.get("title"),
         args.get("description"),
     ) {
-        let encoded_project_id = prepare_project_id(project_id);
-        let url = format!("{}/projects/{}/issues", gitlab_url, encoded_project_id);
+        let url = format!(
+            "{}/projects/{}/issues",
+            gitlab_url,
+            urlencoding::encode(project_id)
+        );
         let mut body = json!({
             "title": title,
             "description": description,
@@ -118,7 +103,7 @@ fn create_issue(input: CallToolRequest) -> Result<CallToolResult, Error> {
 
         let res = http::request(&req, Some(&body.to_string()))?;
 
-        if res.status_code() == 201 {
+        if is_success_status(res.status_code()) {
             Ok(CallToolResult {
                 is_error: None,
                 content: vec![Content {
@@ -162,10 +147,11 @@ fn get_issue(input: CallToolRequest) -> Result<CallToolResult, Error> {
     if let (Some(Value::String(project_id)), Some(Value::String(issue_iid))) =
         (args.get("project_id"), args.get("issue_iid"))
     {
-        let encoded_project_id = prepare_project_id(project_id);
         let url = format!(
             "{}/projects/{}/issues/{}",
-            gitlab_url, encoded_project_id, issue_iid
+            gitlab_url,
+            urlencoding::encode(project_id),
+            issue_iid
         );
 
         let mut headers = BTreeMap::new();
@@ -180,7 +166,7 @@ fn get_issue(input: CallToolRequest) -> Result<CallToolResult, Error> {
 
         let res = http::request::<()>(&req, None)?;
 
-        if res.status_code() == 200 {
+        if is_success_status(res.status_code()) {
             Ok(CallToolResult {
                 is_error: None,
                 content: vec![Content {
@@ -232,10 +218,11 @@ fn update_issue(input: CallToolRequest) -> Result<CallToolResult, Error> {
         args.get("title"),
         args.get("description"),
     ) {
-        let encoded_project_id = prepare_project_id(project_id);
         let url = format!(
             "{}/projects/{}/issues/{}",
-            gitlab_url, encoded_project_id, issue_iid
+            gitlab_url,
+            urlencoding::encode(project_id),
+            issue_iid
         );
         let body = json!({
             "title": title,
@@ -255,7 +242,7 @@ fn update_issue(input: CallToolRequest) -> Result<CallToolResult, Error> {
 
         let res = http::request(&req, Some(&body.to_string()))?;
 
-        if res.status_code() == 200 {
+        if is_success_status(res.status_code()) {
             Ok(CallToolResult {
                 is_error: None,
                 content: vec![Content {
@@ -305,10 +292,11 @@ fn add_issue_comment(input: CallToolRequest) -> Result<CallToolResult, Error> {
         args.get("issue_iid"),
         args.get("comment"),
     ) {
-        let encoded_project_id = prepare_project_id(project_id);
         let url = format!(
             "{}/projects/{}/issues/{}/notes",
-            gitlab_url, encoded_project_id, issue_iid
+            gitlab_url,
+            urlencoding::encode(project_id),
+            issue_iid
         );
         let body = json!({
             "body": comment,
@@ -327,7 +315,7 @@ fn add_issue_comment(input: CallToolRequest) -> Result<CallToolResult, Error> {
 
         let res = http::request(&req, Some(&body.to_string()))?;
 
-        if res.status_code() == 201 {
+        if is_success_status(res.status_code()) {
             Ok(CallToolResult {
                 is_error: None,
                 content: vec![Content {
@@ -376,7 +364,7 @@ fn get_file_contents(input: CallToolRequest) -> Result<CallToolResult, Error> {
         let url = format!(
             "{}/projects/{}/repository/files/{}?ref={}",
             gitlab_url,
-            project_id,
+            urlencoding::encode(project_id),
             urlencoding::encode(file_path),
             urlencoding::encode(ref_name)
         );
@@ -393,7 +381,7 @@ fn get_file_contents(input: CallToolRequest) -> Result<CallToolResult, Error> {
 
         let res = http::request::<()>(&req, None)?;
 
-        if res.status_code() == 200 {
+        if is_success_status(res.status_code()) {
             // Parse the response to get the file content from the "content" field
             if let Ok(json) = serde_json::from_slice::<Value>(&res.body()) {
                 if let Some(content) = json.get("content").and_then(|v| v.as_str()) {
@@ -487,7 +475,7 @@ fn create_or_update_file(input: CallToolRequest) -> Result<CallToolResult, Error
         let url = format!(
             "{}/projects/{}/repository/files/{}",
             gitlab_url,
-            project_id,
+            urlencoding::encode(project_id),
             urlencoding::encode(file_path)
         );
 
@@ -520,7 +508,7 @@ fn create_or_update_file(input: CallToolRequest) -> Result<CallToolResult, Error
 
         let res = http::request(&req, Some(&body.to_string()))?;
 
-        if res.status_code() == 200 {
+        if is_success_status(res.status_code()) {
             Ok(CallToolResult {
                 is_error: None,
                 content: vec![Content {
@@ -573,7 +561,11 @@ fn create_branch(input: CallToolRequest) -> Result<CallToolResult, Error> {
         args.get("branch_name"),
         args.get("ref"),
     ) {
-        let url = format!("{}/projects/{}/repository/branches", gitlab_url, project_id);
+        let url = format!(
+            "{}/projects/{}/repository/branches",
+            gitlab_url,
+            urlencoding::encode(project_id)
+        );
         let body = json!({
             "branch": branch_name,
             "ref": ref_name
@@ -592,7 +584,7 @@ fn create_branch(input: CallToolRequest) -> Result<CallToolResult, Error> {
 
         let res = http::request(&req, Some(&body.to_string()))?;
 
-        if res.status_code() == 201 {
+        if is_success_status(res.status_code()) {
             Ok(CallToolResult {
                 is_error: None,
                 content: vec![Content {
@@ -642,7 +634,11 @@ fn create_merge_request(input: CallToolRequest) -> Result<CallToolResult, Error>
         args.get("source_branch"),
         args.get("target_branch"),
     ) {
-        let url = format!("{}/projects/{}/merge_requests", gitlab_url, project_id);
+        let url = format!(
+            "{}/projects/{}/merge_requests",
+            gitlab_url,
+            urlencoding::encode(project_id)
+        );
 
         // Use provided title if present, otherwise use default format
         let title = args
@@ -670,7 +666,7 @@ fn create_merge_request(input: CallToolRequest) -> Result<CallToolResult, Error>
 
         let res = http::request(&req, Some(&body.to_string()))?;
 
-        if res.status_code() == 201 {
+        if is_success_status(res.status_code()) {
             Ok(CallToolResult {
                 is_error: None,
                 content: vec![Content {
@@ -745,7 +741,7 @@ fn create_snippet(input: CallToolRequest) -> Result<CallToolResult, Error> {
 
         let res = http::request(&req, Some(&body.to_string()))?;
 
-        if res.status_code() == 201 {
+        if is_success_status(res.status_code()) {
             Ok(CallToolResult {
                 is_error: None,
                 content: vec![Content {
@@ -815,7 +811,7 @@ fn update_snippet(input: CallToolRequest) -> Result<CallToolResult, Error> {
 
         let res = http::request(&req, Some(&body.to_string()))?;
 
-        if res.status_code() == 200 {
+        if is_success_status(res.status_code()) {
             Ok(CallToolResult {
                 is_error: None,
                 content: vec![Content {
@@ -871,7 +867,7 @@ fn get_snippet(input: CallToolRequest) -> Result<CallToolResult, Error> {
 
         let res = http::request::<()>(&req, None)?;
 
-        if res.status_code() == 200 {
+        if is_success_status(res.status_code()) {
             Ok(CallToolResult {
                 is_error: None,
                 content: vec![Content {
@@ -927,7 +923,7 @@ fn delete_snippet(input: CallToolRequest) -> Result<CallToolResult, Error> {
 
         let res = http::request::<()>(&req, None)?;
 
-        if res.status_code() == 204 {
+        if is_success_status(res.status_code()) {
             Ok(CallToolResult {
                 is_error: None,
                 content: vec![Content {
