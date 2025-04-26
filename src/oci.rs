@@ -213,14 +213,16 @@ async fn verify_image_signature(cli: &Cli, image_reference: &str) -> Result<bool
     }
 
     if let Some(cert_url) = &cli.cert_url {
-        let issuer = cli.cert_issuer.as_ref().map(|i| i.to_string());
-        if issuer.is_none() {
-            log::warn!("'cert-issuer' is required when 'cert-url' is specified");
-        } else {
-            verification_constraints.push(Box::new(CertSubjectUrlVerifier {
-                url: cert_url.to_string(),
-                issuer: issuer.unwrap(),
-            }));
+        match cli.cert_issuer.as_ref() {
+            Some(issuer) => {
+                verification_constraints.push(Box::new(CertSubjectUrlVerifier {
+                    url: cert_url.to_string(),
+                    issuer: issuer.to_string(),
+                }));
+            }
+            None => {
+                log::warn!("'cert-issuer' is required when 'cert-url' is specified");
+            }
         }
     }
 
