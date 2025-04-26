@@ -38,7 +38,7 @@ docker run -d \
     ghcr.io/tuananh/hyper-mcp \
     --transport sse \
     --bind-address 0.0.0.0:3001 \
-    --config-file /app/config.yaml
+    --config-file /app/config.yml
 ```
 
 Note that we need to bind to `--bind-address 0.0.0.0:3001` in order to access from the host.
