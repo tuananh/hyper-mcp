@@ -2,7 +2,7 @@
 pub const TEMPLATES_JSON: &str = include_str!("../templates.json");
 
 // Embed font data
-pub const FONT_DATA: &[u8] = include_bytes!("../assets/fonts/TitilliumWeb-Black.ttf");
+pub const FONT_DATA: &[u8] = include_bytes!("../assets/fonts/NotoSans-Bold.ttf");
 
 // Function to get template config
 pub fn get_template_config(template_id: &str) -> Option<&'static str> {
