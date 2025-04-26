@@ -1,13 +1,19 @@
+use crate::Cli;
 use anyhow::anyhow;
 use docker_credential::{CredentialRetrievalError, DockerCredential};
 use flate2::read::GzDecoder;
 use oci_client::Reference;
 use oci_client::{Client, manifest, manifest::OciDescriptor, secrets::RegistryAuth};
 use serde::{Deserialize, Serialize};
+use sigstore::cosign::verification_constraint::cert_subject_email_verifier::StringVerifier;
+use sigstore::cosign::verification_constraint::{
+    CertSubjectEmailVerifier, CertSubjectUrlVerifier, VerificationConstraintVec,
+};
 use sigstore::cosign::{ClientBuilder, CosignCapabilities, verify_constraints};
 use sigstore::errors::SigstoreVerifyConstraintsError;
 use sigstore::registry::{Auth, OciReference};
-use sigstore::trust::ManualTrustRoot;
+use sigstore::trust::sigstore::SigstoreTrustRoot;
+use sigstore::trust::{ManualTrustRoot, TrustRoot};
 use std::fs;
 use std::io::Read;
 use std::path::Path;
@@ -74,18 +80,80 @@ fn build_auth(reference: &Reference) -> RegistryAuth {
     }
 }
 
-async fn verify_image_signature(image_reference: &str) -> Result<bool, anyhow::Error> {
+async fn setup_trust_repository(cli: &Cli) -> Result<Box<dyn TrustRoot>, anyhow::Error> {
+    if cli.use_sigstore_tuf_data {
+        // Use Sigstore TUF data from the official repository
+        log::info!("Using Sigstore TUF data for verification");
+        match SigstoreTrustRoot::new(None).await {
+            Ok(repo) => return Ok(Box::new(repo)),
+            Err(e) => {
+                log::warn!("Failed to initialize TUF trust repository: {}", e);
+                log::info!("Falling back to manual trust repository");
+            }
+        }
+    }
+
+    // Create a manual trust repository
+    let mut data = ManualTrustRoot::default();
+
+    // Add Rekor public keys if provided
+    if let Some(rekor_keys_path) = &cli.rekor_pub_keys {
+        if rekor_keys_path.exists() {
+            match fs::read(rekor_keys_path) {
+                Ok(content) => {
+                    log::info!("Added Rekor public key");
+                    data.rekor_keys.push(content);
+                }
+                Err(e) => log::warn!("Failed to read Rekor public keys file: {}", e),
+            }
+        } else {
+            log::warn!("Rekor public keys file not found: {:?}", rekor_keys_path);
+        }
+    }
+
+    // Add Fulcio certificates if provided
+    if let Some(fulcio_certs_path) = &cli.fulcio_certs {
+        if fulcio_certs_path.exists() {
+            match fs::read(fulcio_certs_path) {
+                Ok(content) => {
+                    let certificate = sigstore::registry::Certificate {
+                        encoding: sigstore::registry::CertificateEncoding::Pem,
+                        data: content,
+                    };
+
+                    match certificate.try_into() {
+                        Ok(cert) => {
+                            log::info!("Added Fulcio certificate");
+                            data.fulcio_certs.push(cert);
+                        }
+                        Err(e) => log::warn!("Failed to parse Fulcio certificate: {}", e),
+                    }
+                }
+                Err(e) => log::warn!("Failed to read Fulcio certificates file: {}", e),
+            }
+        } else {
+            log::warn!(
+                "Fulcio certificates file not found: {:?}",
+                fulcio_certs_path
+            );
+        }
+    }
+
+    Ok(Box::new(data))
+}
+
+async fn verify_image_signature(cli: &Cli, image_reference: &str) -> Result<bool, anyhow::Error> {
     log::info!("Verifying signature for {}", image_reference);
 
-    // Create a minimal trust repository
-    let repo = ManualTrustRoot::default();
+    // Set up the trust repository based on CLI arguments
+    let repo = setup_trust_repository(cli).await?;
     let auth = &Auth::Anonymous;
 
-    // Create a client builder and build the client
+    // Create a client builder
     let client_builder = ClientBuilder::default();
 
     // Create client with trust repository
-    let client_builder = match client_builder.with_trust_repository(&repo) {
+    let client_builder = match client_builder.with_trust_repository(repo.as_ref()) {
         Ok(builder) => builder,
         Err(e) => return Err(anyhow!("Failed to set up trust repository: {}", e)),
     };
@@ -129,8 +197,32 @@ async fn verify_image_signature(image_reference: &str) -> Result<bool, anyhow::E
         return Ok(false);
     }
 
-    // Empty verification constraints means we're just checking for valid signatures
-    let verification_constraints = Vec::new();
+    // Build verification constraints based on CLI options
+    let mut verification_constraints: VerificationConstraintVec = Vec::new();
+
+    if let Some(cert_email) = &cli.cert_email {
+        let issuer = cli
+            .cert_issuer
+            .as_ref()
+            .map(|i| StringVerifier::ExactMatch(i.to_string()));
+
+        verification_constraints.push(Box::new(CertSubjectEmailVerifier {
+            email: StringVerifier::ExactMatch(cert_email.to_string()),
+            issuer,
+        }));
+    }
+
+    if let Some(cert_url) = &cli.cert_url {
+        let issuer = cli.cert_issuer.as_ref().map(|i| i.to_string());
+        if issuer.is_none() {
+            log::warn!("'cert-issuer' is required when 'cert-url' is specified");
+        } else {
+            verification_constraints.push(Box::new(CertSubjectUrlVerifier {
+                url: cert_url.to_string(),
+                issuer: issuer.unwrap(),
+            }));
+        }
+    }
 
     // Verify the constraints
     match verify_constraints(&signature_layers, verification_constraints.iter()) {
@@ -152,10 +244,10 @@ async fn verify_image_signature(image_reference: &str) -> Result<bool, anyhow::E
 }
 
 pub async fn pull_and_extract_oci_image(
+    cli: &Cli,
     image_reference: &str,
     target_file_path: &str,
     local_output_path: &str,
-    verify_signature: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if Path::new(local_output_path).exists() {
         log::info!(
@@ -175,9 +267,9 @@ pub async fn pull_and_extract_oci_image(
     let auth = build_auth(&reference);
 
     // Verify the image signature if it's an OCI image and verification is enabled
-    if verify_signature {
+    if !cli.insecure_skip_signature {
         log::info!("Signature verification enabled for {}", image_reference);
-        match verify_image_signature(image_reference).await {
+        match verify_image_signature(cli, image_reference).await {
             Ok(verified) => {
                 if !verified {
                     return Err(format!(
@@ -244,4 +336,29 @@ pub async fn pull_and_extract_oci_image(
     }
 
     Err("Target file not found in any layer".into())
+}
+
+pub struct OciDownloader {
+    cli: Cli,
+}
+
+impl OciDownloader {
+    pub fn new(cli: &Cli) -> Self {
+        Self { cli: cli.clone() }
+    }
+
+    pub async fn pull_and_extract(
+        &self,
+        image_reference: &str,
+        target_file_path: &str,
+        local_output_path: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        pull_and_extract_oci_image(
+            &self.cli,
+            image_reference,
+            target_file_path,
+            local_output_path,
+        )
+        .await
+    }
 }

@@ -1,5 +1,6 @@
+use crate::Cli;
 use crate::config::Config;
-use crate::oci::pull_and_extract_oci_image;
+use crate::oci::OciDownloader;
 use anyhow::Result;
 use extism::{Manifest, Plugin, Wasm};
 use rmcp::service::{RequestContext, RoleServer};
@@ -16,14 +17,19 @@ pub struct PluginService {
     config: Config,
     plugins: Arc<RwLock<HashMap<String, Plugin>>>,
     tool_plugin_map: Arc<RwLock<HashMap<String, String>>>,
+    oci_downloader: Arc<OciDownloader>,
 }
 
 impl PluginService {
-    pub async fn new(config: Config) -> Result<Self> {
+    pub async fn new(config: Config, cli: &Cli) -> Result<Self> {
+        // Create OCI downloader with CLI object
+        let oci_downloader = Arc::new(OciDownloader::new(cli));
+
         let service = Self {
             config,
             plugins: Arc::new(RwLock::new(HashMap::new())),
             tool_plugin_map: Arc::new(RwLock::new(HashMap::new())),
+            oci_downloader,
         };
 
         service.load_plugins().await?;
@@ -58,16 +64,10 @@ impl PluginService {
                     cache_dir.join(format!("{}-{}.wasm", plugin_cfg.name, short_hash));
                 let local_output_path = local_output_path.to_str().unwrap();
 
-                // Use the CLI flag to determine whether to skip signature verification
-                let verify_signature = !self.config.insecure_skip_signature;
-
-                if let Err(e) = pull_and_extract_oci_image(
-                    image_reference,
-                    target_file_path,
-                    local_output_path,
-                    verify_signature,
-                )
-                .await
+                if let Err(e) = self
+                    .oci_downloader
+                    .pull_and_extract(image_reference, target_file_path, local_output_path)
+                    .await
                 {
                     log::error!("Error pulling oci plugin: {}", e);
                     return Err(anyhow::anyhow!("Failed to pull OCI plugin: {}", e));

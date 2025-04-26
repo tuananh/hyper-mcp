@@ -34,11 +34,11 @@ Run the container
 docker run -d \
     --name hyper-mcp \
     -p 3001:3001 \
-    -v /home/ubuntu/config.yml:/app/config.yml \
+    -v /home/ubuntu/config.json:/app/config.json \
     ghcr.io/tuananh/hyper-mcp \
     --transport sse \
     --bind-address 0.0.0.0:3001 \
-    --config-file /app/config.yml
+    --config-file /app/config.json
 ```
 
 Note that we need to bind to `--bind-address 0.0.0.0:3001` in order to access from the host.

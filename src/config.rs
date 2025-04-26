@@ -6,8 +6,6 @@ use std::path::Path;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
     pub plugins: Vec<PluginConfig>,
-    #[serde(default)]
-    pub insecure_skip_signature: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

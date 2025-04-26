@@ -14,7 +14,7 @@ pub const SERVER_NAME: &str = "hyper-mcp";
 pub const SERVER_VERSION: &str = "0.1.0";
 pub const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1:3001";
 
-#[derive(Parser)]
+#[derive(Parser, Clone)]
 #[command(author = "Tuan Anh Tran <me@tuananh.org>", version, about, long_about = None)]
 struct Cli {
     #[arg(short, long, value_name = "FILE")]
@@ -44,13 +44,64 @@ struct Cli {
         default_value = DEFAULT_BIND_ADDRESS
     )]
     bind_address: String,
+
+    #[arg(
+        long = "insecure-skip-signature",
+        help = "Skip OCI image signature verification",
+        env = "HYPER_MCP_INSECURE_SKIP_SIGNATURE",
+        default_value = "false"
+    )]
+    insecure_skip_signature: bool,
+
+    #[arg(
+        long = "use-sigstore-tuf-data",
+        help = "Use Sigstore TUF data for verification",
+        env = "HYPER_MCP_USE_SIGSTORE_TUF_DATA",
+        default_value = "true"
+    )]
+    use_sigstore_tuf_data: bool,
+
+    #[arg(
+        long = "rekor-pub-keys",
+        help = "Path to Rekor public keys for verification",
+        env = "HYPER_MCP_REKOR_PUB_KEYS"
+    )]
+    rekor_pub_keys: Option<PathBuf>,
+
+    #[arg(
+        long = "fulcio-certs",
+        help = "Path to Fulcio certificates for verification",
+        env = "HYPER_MCP_FULCIO_CERTS"
+    )]
+    fulcio_certs: Option<PathBuf>,
+
+    #[arg(
+        long = "cert-issuer",
+        help = "Certificate issuer to verify against",
+        env = "HYPER_MCP_CERT_ISSUER"
+    )]
+    cert_issuer: Option<String>,
+
+    #[arg(
+        long = "cert-email",
+        help = "Certificate email to verify against",
+        env = "HYPER_MCP_CERT_EMAIL"
+    )]
+    cert_email: Option<String>,
+
+    #[arg(
+        long = "cert-url",
+        help = "Certificate URL to verify against",
+        env = "HYPER_MCP_CERT_URL"
+    )]
+    cert_url: Option<String>,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    let log_level = cli.log_level.unwrap_or_else(|| "info".to_string());
+    let log_level = cli.log_level.clone().unwrap_or_else(|| "info".to_string());
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env().add_directive(log_level.parse().unwrap()))
         .with_writer(std::io::stderr)
@@ -68,12 +119,15 @@ async fn main() -> Result<()> {
         })
         .unwrap();
 
-    let config_path = cli.config_file.unwrap_or(default_config_path);
+    // Extract config_file before using cli elsewhere to avoid borrow issues
+    let config_file = cli.config_file.clone();
+    let config_path = config_file.unwrap_or(default_config_path);
     tracing::info!("Using config file at {}", config_path.display());
 
     let config = config::load_config(&config_path).await?;
 
-    let plugin_service = plugins::PluginService::new(config.clone()).await?;
+    // Create plugin service with the config and CLI options
+    let plugin_service = plugins::PluginService::new(config, &cli).await?;
 
     match cli.transport.as_str() {
         "stdio" => {
