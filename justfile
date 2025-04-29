@@ -1,10 +1,23 @@
 hyper_mcp_bin := `realpath ./target/debug/hyper-mcp`
 
+_default:
+  @just --list --unsorted
+
+all *args:
+    just fmt {{args}}
+    just clippy {{args}}
+
 debug:
     npx @modelcontextprotocol/inspector {{hyper_mcp_bin}} --config-file ~/.config/hyper-mcp/config.json
 
 run:
     cargo run
+
+fmt *args:
+    cargo fmt --all {{args}}
+
+clippy *args:
+    cargo clippy --all -- -D warnings {{args}}
 
 renovate:
     docker run --rm \
