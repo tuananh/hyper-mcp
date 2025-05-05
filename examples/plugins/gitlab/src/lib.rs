@@ -24,6 +24,14 @@ fn is_success_status(status_code: u16) -> bool {
     status_code >= 200 && status_code < 300
 }
 
+fn urlencode_if_needed(input: &str) -> String {
+    if input.contains("/") {
+        urlencoding::encode(input).to_string()
+    } else {
+        input.to_string()
+    }
+}
+
 pub(crate) fn call(input: CallToolRequest) -> Result<CallToolResult, Error> {
     info!("call: {:?}", input);
     match input.params.name.as_str() {
@@ -76,7 +84,7 @@ fn create_issue(input: CallToolRequest) -> Result<CallToolResult, Error> {
         let url = format!(
             "{}/projects/{}/issues",
             gitlab_url,
-            urlencoding::encode(project_id)
+            urlencode_if_needed(project_id)
         );
         let mut body = json!({
             "title": title,
@@ -150,7 +158,7 @@ fn get_issue(input: CallToolRequest) -> Result<CallToolResult, Error> {
         let url = format!(
             "{}/projects/{}/issues/{}",
             gitlab_url,
-            urlencoding::encode(project_id),
+            urlencode_if_needed(project_id),
             issue_iid
         );
 
@@ -221,7 +229,7 @@ fn update_issue(input: CallToolRequest) -> Result<CallToolResult, Error> {
         let url = format!(
             "{}/projects/{}/issues/{}",
             gitlab_url,
-            urlencoding::encode(project_id),
+            urlencode_if_needed(project_id),
             issue_iid
         );
         let body = json!({
@@ -295,7 +303,7 @@ fn add_issue_comment(input: CallToolRequest) -> Result<CallToolResult, Error> {
         let url = format!(
             "{}/projects/{}/issues/{}/notes",
             gitlab_url,
-            urlencoding::encode(project_id),
+            urlencode_if_needed(project_id),
             issue_iid
         );
         let body = json!({
@@ -364,9 +372,9 @@ fn get_file_contents(input: CallToolRequest) -> Result<CallToolResult, Error> {
         let url = format!(
             "{}/projects/{}/repository/files/{}?ref={}",
             gitlab_url,
-            urlencoding::encode(project_id),
-            urlencoding::encode(file_path),
-            urlencoding::encode(ref_name)
+            urlencode_if_needed(project_id),
+            urlencode_if_needed(file_path),
+            ref_name
         );
 
         let mut headers = BTreeMap::new();
@@ -475,8 +483,8 @@ fn create_or_update_file(input: CallToolRequest) -> Result<CallToolResult, Error
         let url = format!(
             "{}/projects/{}/repository/files/{}",
             gitlab_url,
-            urlencoding::encode(project_id),
-            urlencoding::encode(file_path)
+            urlencode_if_needed(project_id),
+            urlencode_if_needed(file_path)
         );
 
         // Build the body with optional author fields
@@ -564,7 +572,7 @@ fn create_branch(input: CallToolRequest) -> Result<CallToolResult, Error> {
         let url = format!(
             "{}/projects/{}/repository/branches",
             gitlab_url,
-            urlencoding::encode(project_id)
+            urlencode_if_needed(project_id)
         );
         let body = json!({
             "branch": branch_name,
@@ -637,7 +645,7 @@ fn create_merge_request(input: CallToolRequest) -> Result<CallToolResult, Error>
         let url = format!(
             "{}/projects/{}/merge_requests",
             gitlab_url,
-            urlencoding::encode(project_id)
+            urlencode_if_needed(project_id)
         );
 
         // Use provided title if present, otherwise use default format
