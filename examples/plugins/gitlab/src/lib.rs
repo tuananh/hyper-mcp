@@ -47,6 +47,7 @@ pub(crate) fn call(input: CallToolRequest) -> Result<CallToolResult, Error> {
 
         // Branches
         "gl_create_branch" => create_branch(input),
+        "gl_list_branches" => gl_list_branches(input),
         "gl_create_merge_request" => create_merge_request(input),
 
         // Snippets (GitLab equivalent of Gists)
@@ -968,6 +969,66 @@ fn delete_snippet(input: CallToolRequest) -> Result<CallToolResult, Error> {
     }
 }
 
+fn gl_list_branches(input: CallToolRequest) -> Result<CallToolResult, Error> {
+    let args = input.params.arguments.clone().unwrap_or_default();
+    let (token, gitlab_url) = get_gitlab_config()?;
+
+    if let Some(Value::String(project_id)) = args.get("project_id") {
+        let url = format!(
+            "{}/projects/{}/repository/branches",
+            gitlab_url,
+            urlencode_if_needed(project_id)
+        );
+
+        let mut headers = BTreeMap::new();
+        headers.insert("PRIVATE-TOKEN".to_string(), token);
+        headers.insert("User-Agent".to_string(), "hyper-mcp/0.1.0".to_string());
+
+        let req = HttpRequest {
+            url,
+            headers,
+            method: Some("GET".to_string()),
+        };
+
+        let res = http::request::<()>(&req, None)?;
+
+        if is_success_status(res.status_code()) {
+            Ok(CallToolResult {
+                is_error: None,
+                content: vec![Content {
+                    annotations: None,
+                    text: Some(String::from_utf8_lossy(&res.body()).to_string()),
+                    mime_type: Some("application/json".to_string()),
+                    r#type: ContentType::Text,
+                    data: None,
+                }],
+            })
+        } else {
+            Ok(CallToolResult {
+                is_error: Some(true),
+                content: vec![Content {
+                    annotations: None,
+                    text: Some(format!("Failed to list branches: {}", res.status_code())),
+                    mime_type: None,
+                    r#type: ContentType::Text,
+                    data: None,
+                }],
+            })
+        }
+    } else {
+        Ok(CallToolResult {
+            is_error: Some(true),
+            content: vec![Content {
+                annotations: None,
+                text: Some("Please provide project_id".into()),
+                mime_type: None,
+                r#type: ContentType::Text,
+                data: None,
+            }],
+        })
+    }
+}
+
 pub(crate) fn describe() -> Result<ListToolsResult, Error> {
     Ok(ListToolsResult {
         tools: vec![
@@ -1266,6 +1327,23 @@ pub(crate) fn describe() -> Result<ListToolsResult, Error> {
                         },
                     },
                     "required": ["snippet_id"],
+                })
+                .as_object()
+                .unwrap()
+                .clone(),
+            },
+            ToolDescription {
+                name: "gl_list_branches".into(),
+                description: "List all branches in a GitLab project".into(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "project_id": {
+                            "type": "string",
+                            "description": "The project identifier - can be a numeric project ID (e.g. '123') or a URL-encoded path (e.g. 'group%2Fproject')",
+                        },
+                    },
+                    "required": ["project_id"],
                 })
                 .as_object()
                 .unwrap()
