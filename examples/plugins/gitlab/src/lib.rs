@@ -49,6 +49,8 @@ pub(crate) fn call(input: CallToolRequest) -> Result<CallToolResult, Error> {
         "gl_create_branch" => create_branch(input),
         "gl_list_branches" => gl_list_branches(input),
         "gl_create_merge_request" => create_merge_request(input),
+        "gl_update_merge_request" => update_merge_request(input),
+        "gl_get_merge_request" => gl_get_merge_request(input),
 
         // Snippets (GitLab equivalent of Gists)
         "gl_create_snippet" => create_snippet(input),
@@ -715,6 +717,155 @@ fn create_merge_request(input: CallToolRequest) -> Result<CallToolResult, Error>
     }
 }
 
+fn update_merge_request(input: CallToolRequest) -> Result<CallToolResult, Error> {
+    let args = input.params.arguments.clone().unwrap_or_default();
+    let (token, gitlab_url) = get_gitlab_config()?;
+
+    if let (
+        Some(Value::String(project_id)),
+        Some(Value::String(merge_request_iid)),
+        Some(Value::String(title)),
+        Some(Value::String(description)),
+    ) = (
+        args.get("project_id"),
+        args.get("merge_request_iid"),
+        args.get("title"),
+        args.get("description"),
+    ) {
+        let url = format!(
+            "{}/projects/{}/merge_requests/{}",
+            gitlab_url,
+            urlencode_if_needed(project_id),
+            merge_request_iid 
+        );
+
+        let mut body_map = serde_json::Map::new();
+        body_map.insert("title".to_string(), json!(title));
+        body_map.insert("description".to_string(), json!(description));
+
+        let body = Value::Object(body_map);
+
+        let mut headers = BTreeMap::new();
+        headers.insert("PRIVATE-TOKEN".to_string(), token);
+        headers.insert("Content-Type".to_string(), "application/json".to_string());
+        headers.insert("User-Agent".to_string(), "hyper-mcp/0.1.0".to_string());
+
+        let req = HttpRequest {
+            url,
+            headers,
+            method: Some("PUT".to_string()),
+        };
+
+        let res = http::request(&req, Some(&body.to_string()))?;
+
+        if is_success_status(res.status_code()) {
+            Ok(CallToolResult {
+                is_error: None,
+                content: vec![Content {
+                    annotations: None,
+                    text: Some(String::from_utf8_lossy(&res.body()).to_string()),
+                    mime_type: Some("application/json".to_string()),
+                    r#type: ContentType::Text,
+                    data: None,
+                }],
+            })
+        } else {
+            Ok(CallToolResult {
+                is_error: Some(true),
+                content: vec![Content {
+                    annotations: None,
+                    text: Some(format!(
+                        "Failed to update merge request: {} - Response: {}",
+                        res.status_code(),
+                        String::from_utf8_lossy(&res.body())
+                    )),
+                    mime_type: None,
+                    r#type: ContentType::Text,
+                    data: None,
+                }],
+            })
+        }
+    } else {
+        Ok(CallToolResult {
+            is_error: Some(true),
+            content: vec![Content {
+                annotations: None,
+                text: Some("Please provide project_id, merge_request_iid, title, and description".into()),
+                mime_type: None,
+                r#type: ContentType::Text,
+                data: None,
+            }],
+        })
+    }
+}
+
+fn gl_get_merge_request(input: CallToolRequest) -> Result<CallToolResult, Error> {
+    let args = input.params.arguments.clone().unwrap_or_default();
+    let (token, gitlab_url) = get_gitlab_config()?;
+
+    if let (Some(Value::String(project_id)), Some(Value::String(merge_request_iid))) =
+        (args.get("project_id"), args.get("merge_request_iid"))
+    {
+        let url = format!(
+            "{}/projects/{}/merge_requests/{}",
+            gitlab_url,
+            urlencode_if_needed(project_id),
+            merge_request_iid
+        );
+
+        let mut headers = BTreeMap::new();
+        headers.insert("PRIVATE-TOKEN".to_string(), token);
+        headers.insert("User-Agent".to_string(), "hyper-mcp/0.1.0".to_string());
+
+        let req = HttpRequest {
+            url,
+            headers,
+            method: Some("GET".to_string()),
+        };
+
+        let res = http::request::<()>(&req, None)?;
+
+        if is_success_status(res.status_code()) {
+            Ok(CallToolResult {
+                is_error: None,
+                content: vec![Content {
+                    annotations: None,
+                    text: Some(String::from_utf8_lossy(&res.body()).to_string()),
+                    mime_type: Some("application/json".to_string()),
+                    r#type: ContentType::Text,
+                    data: None,
+                }],
+            })
+        } else {
+            Ok(CallToolResult {
+                is_error: Some(true),
+                content: vec![Content {
+                    annotations: None,
+                    text: Some(format!(
+                        "Failed to get merge request: {} - Response: {}",
+                        res.status_code(),
+                        String::from_utf8_lossy(&res.body())
+                    )),
+                    mime_type: None,
+                    r#type: ContentType::Text,
+                    data: None,
+                }],
+            })
+        }
+    } else {
+        Ok(CallToolResult {
+            is_error: Some(true),
+            content: vec![Content {
+                annotations: None,
+                text: Some("Please provide project_id and merge_request_iid".into()),
+                mime_type: None,
+                r#type: ContentType::Text,
+                data: None,
+            }],
+        })
+    }
+}
+
 fn create_snippet(input: CallToolRequest) -> Result<CallToolResult, Error> {
     let args = input.params.arguments.clone().unwrap_or_default();
     let (token, gitlab_url) = get_gitlab_config()?;
@@ -1243,6 +1394,59 @@ pub(crate) fn describe() -> Result<ListToolsResult, Error> {
                         },
                     },
                     "required": ["project_id", "source_branch", "target_branch"],
+                })
+                .as_object()
+                .unwrap()
+                .clone(),
+            },
+            ToolDescription {
+                name: "gl_update_merge_request".into(),
+                description: "Update an existing merge request in a GitLab project.".into(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "project_id": {
+                            "type": "string",
+                            "description": "The project identifier - can be a numeric project ID (e.g. '123') or a URL-encoded path (e.g. 'group%2Fproject')",
+                        },
+                        "merge_request_iid": {
+                            "type": "string",
+                            "description": "The internal ID (IID) of the merge request to update",
+                        },
+                        "title": {
+                            "type": "string",
+                            "description": "The new title for the merge request.",
+                        },
+                        "description": {
+                            "type": "string",
+                            "description": "The new description for the merge request.",
+                        },
+                        // Consider adding other common updatable fields like:
+                        // "target_branch": { "type": "string", "description": "The target branch" },
+                        // "state_event": { "type": "string", "description": "Event to change MR state (e.g., 'close', 'reopen')" }
+                    },
+                    "required": ["project_id", "merge_request_iid", "title", "description"],
+                })
+                .as_object()
+                .unwrap()
+                .clone(),
+            },
+            ToolDescription {
+                name: "gl_get_merge_request".into(),
+                description: "Get details of a specific merge request in a GitLab project.".into(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "project_id": {
+                            "type": "string",
+                            "description": "The project identifier - can be a numeric project ID (e.g. '123') or a URL-encoded path (e.g. 'group%2Fproject')",
+                        },
+                        "merge_request_iid": {
+                            "type": "string",
+                            "description": "The internal ID (IID) of the merge request",
+                        },
+                    },
+                    "required": ["project_id", "merge_request_iid"],
                 })
                 .as_object()
                 .unwrap()
