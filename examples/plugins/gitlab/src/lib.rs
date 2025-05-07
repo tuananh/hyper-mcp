@@ -156,6 +156,9 @@ pub(crate) fn call(input: CallToolRequest) -> Result<CallToolResult, Error> {
         // Repository tree
         "gl_get_repo_tree" => gl_get_repo_tree(input),
 
+        // Repository members
+        "gl_get_repo_members" => gl_get_repo_members(input),
+
         _ => Ok(CallToolResult {
             is_error: Some(true),
             content: vec![Content {
@@ -1534,6 +1537,136 @@ fn gl_get_repo_tree(input: CallToolRequest) -> Result<CallToolResult, Error> {
     }
 }
 
+fn gl_get_repo_members(input: CallToolRequest) -> Result<CallToolResult, Error> {
+    let args = input.params.arguments.clone().unwrap_or_default();
+    let (token, gitlab_url) = get_gitlab_config()?;
+
+    if let Some(Value::String(project_id_val)) = args.get("project_id") {
+        let project_id = project_id_val.as_str();
+        let include_inherited = args
+            .get("include_inherited_members")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        let query_opt = args.get("query").and_then(|v| v.as_str());
+
+        let members_path = if include_inherited {
+            "members/all"
+        } else {
+            "members"
+        };
+
+        let mut all_members_json: Vec<Value> = Vec::new();
+        let mut current_page_number: u32 = 1;
+        const PER_PAGE_COUNT: u32 = 100; // GitLab's typical max per_page
+        const MAX_PAGES: u32 = 100; // Safety break: 100 pages * 100 items/page = 10,000 members
+
+        loop {
+            if current_page_number > MAX_PAGES {
+                // Log this or return a partial result with a warning if desired
+                break;
+            }
+
+            let mut url_params = vec![
+                format!("per_page={}", PER_PAGE_COUNT),
+                format!("page={}", current_page_number),
+            ];
+
+            if let Some(query_str) = query_opt {
+                url_params.push(format!("query={}", urlencoding::encode(query_str)));
+            }
+
+            let query_string = format!("?{}", url_params.join("&"));
+            let url = format!(
+                "{}/projects/{}/{}{}",
+                gitlab_url,
+                urlencode_if_needed(project_id),
+                members_path,
+                query_string
+            );
+
+            let mut headers = BTreeMap::new();
+            headers.insert("PRIVATE-TOKEN".to_string(), token.clone());
+            headers.insert("User-Agent".to_string(), "hyper-mcp/0.1.0".to_string());
+
+            let req = HttpRequest {
+                url: url.clone(),
+                headers,
+                method: Some("GET".to_string()),
+            };
+
+            let res = http::request::<()>(&req, None)?;
+
+            if !is_success_status(res.status_code()) {
+                return Ok(CallToolResult {
+                    is_error: Some(true),
+                    content: vec![Content {
+                        annotations: None,
+                        text: Some(format!(
+                            "Failed to get repository members page {} from {}: {} - Response: {}",
+                            current_page_number,
+                            req.url,
+                            res.status_code(),
+                            String::from_utf8_lossy(&res.body())
+                        )),
+                        mime_type: None,
+                        r#type: ContentType::Text,
+                        data: None,
+                    }],
+                });
+            }
+
+            match serde_json::from_slice::<Vec<Value>>(&res.body()) {
+                Ok(page_members) => {
+                    let num_fetched = page_members.len();
+                    all_members_json.extend(page_members);
+
+                    if num_fetched < PER_PAGE_COUNT as usize {
+                        break; // Last page fetched
+                    }
+                }
+                Err(e) => {
+                    return Ok(CallToolResult {
+                        is_error: Some(true),
+                        content: vec![Content {
+                            annotations: None,
+                            text: Some(format!(
+                                "Failed to parse repository members data from GitLab API (page {}): {}",
+                                current_page_number, e
+                            )),
+                            mime_type: None,
+                            r#type: ContentType::Text,
+                            data: None,
+                        }],
+                    });
+                }
+            }
+            current_page_number += 1;
+        }
+
+        Ok(CallToolResult {
+            is_error: None,
+            content: vec![Content {
+                annotations: None,
+                text: Some(serde_json::to_string(&all_members_json)?),
+                mime_type: Some("application/json".to_string()),
+                r#type: ContentType::Text,
+                data: None,
+            }],
+        })
+    } else {
+        Ok(CallToolResult {
+            is_error: Some(true),
+            content: vec![Content {
+                annotations: None,
+                text: Some("Please provide project_id".into()),
+                mime_type: None,
+                r#type: ContentType::Text,
+                data: None,
+            }],
+        })
+    }
+}
+
 pub(crate) fn describe() -> Result<ListToolsResult, Error> {
     Ok(ListToolsResult {
         tools: vec![
@@ -1969,6 +2102,31 @@ pub(crate) fn describe() -> Result<ListToolsResult, Error> {
                         "recursive": {
                             "type": "boolean",
                             "description": "Boolean value used to get a recursive tree. If you want a complete tree, set this to true. Default is false. Optional.",
+                        },
+                    },
+                    "required": ["project_id"],
+                })
+                .as_object()
+                .unwrap()
+                .clone(),
+            },
+            ToolDescription {
+                name: "gl_get_repo_members".into(),
+                description: "Get a list of members for a GitLab project. Supports fetching direct or inherited members and filtering by query. Handles pagination internally.".into(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "project_id": {
+                            "type": "string",
+                            "description": "The project identifier - can be a numeric project ID (e.g. '123') or a URL-encoded path (e.g. 'group%2Fproject')",
+                        },
+                        "include_inherited_members": {
+                            "type": "boolean",
+                            "description": "Set to true to include inherited members (e.g., from groups). Defaults to false (direct members only). Optional.",
+                        },
+                        "query": {
+                            "type": "string",
+                            "description": "Filter by username, name, or public email. Optional.",
                         },
                     },
                     "required": ["project_id"],
