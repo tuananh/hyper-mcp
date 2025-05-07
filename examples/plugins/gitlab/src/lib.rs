@@ -1928,7 +1928,7 @@ pub(crate) fn describe() -> Result<ListToolsResult, Error> {
                         },
                         "recursive": {
                             "type": "boolean",
-                            "description": "Boolean value used to get a recursive tree. Default is false. Optional.",
+                            "description": "Boolean value used to get a recursive tree. If you want a complete tree, set this to true. Default is false. Optional.",
                         },
                     },
                     "required": ["project_id"],
