@@ -319,13 +319,9 @@ fn update_issue(input: CallToolRequest) -> Result<CallToolResult, Error> {
     if let (
         Some(Value::String(project_id)),
         Some(Value::String(issue_iid)),
-        Some(Value::String(title)),
-        Some(Value::String(description)),
     ) = (
         args.get("project_id"),
         args.get("issue_iid"),
-        args.get("title"),
-        args.get("description"),
     ) {
         let url = format!(
             "{}/projects/{}/issues/{}",
@@ -333,10 +329,38 @@ fn update_issue(input: CallToolRequest) -> Result<CallToolResult, Error> {
             urlencode_if_needed(project_id),
             issue_iid
         );
-        let body = json!({
-            "title": title,
-            "description": description,
-        });
+        
+        let mut body_map = serde_json::Map::new();
+        if let Some(Value::String(title)) = args.get("title") {
+            body_map.insert("title".to_string(), json!(title));
+        }
+        if let Some(Value::String(description)) = args.get("description") {
+            body_map.insert("description".to_string(), json!(description));
+        }
+        if let Some(Value::String(add_labels)) = args.get("add_labels") {
+            body_map.insert("add_labels".to_string(), json!(add_labels));
+        }
+        if let Some(Value::String(remove_labels)) = args.get("remove_labels") {
+            body_map.insert("remove_labels".to_string(), json!(remove_labels));
+        }
+        if let Some(Value::String(due_date)) = args.get("due_date") {
+            body_map.insert("due_date".to_string(), json!(due_date));
+        }
+
+        if body_map.is_empty() {
+            return Ok(CallToolResult {
+                is_error: Some(true),
+                content: vec![Content {
+                    annotations: None,
+                    text: Some("Please provide at least one field to update (e.g., title, description, add_labels, remove_labels, due_date)".into()),
+                    mime_type: None,
+                    r#type: ContentType::Text,
+                    data: None,
+                }],
+            });
+        }
+        
+        let body = Value::Object(body_map);
 
         let mut headers = BTreeMap::new();
         headers.insert("PRIVATE-TOKEN".to_string(), token);
@@ -367,7 +391,11 @@ fn update_issue(input: CallToolRequest) -> Result<CallToolResult, Error> {
                 is_error: Some(true),
                 content: vec![Content {
                     annotations: None,
-                    text: Some(format!("Failed to update issue: {}", res.status_code())),
+                    text: Some(format!(
+                        "Failed to update issue: {} - Response: {}",
+                        res.status_code(),
+                        String::from_utf8_lossy(&res.body())
+                    )),
                     mime_type: None,
                     r#type: ContentType::Text,
                     data: None,
@@ -379,7 +407,7 @@ fn update_issue(input: CallToolRequest) -> Result<CallToolResult, Error> {
             is_error: Some(true),
             content: vec![Content {
                 annotations: None,
-                text: Some("Please provide project_id, issue_iid, title, and description".into()),
+                text: Some("Please provide project_id, issue_iid, and at least one field to update (title, description, add_labels, remove_labels, or due_date)".into()),
                 mime_type: None,
                 r#type: ContentType::Text,
                 data: None,
@@ -1581,8 +1609,20 @@ pub(crate) fn describe() -> Result<ListToolsResult, Error> {
                             "type": "string",
                             "description": "The new description of the issue",
                         },
+                        "add_labels": {
+                            "type": "string",
+                            "description": "Comma-separated list of labels to add to the issue",
+                        },
+                        "remove_labels": {
+                            "type": "string",
+                            "description": "Comma-separated list of labels to remove from the issue",
+                        },
+                        "due_date": {
+                            "type": "string",
+                            "description": "The due date of the issue in YYYY-MM-DD format (e.g., 2024-03-11)",
+                        },
                     },
-                    "required": ["project_id", "issue_iid", "title", "description"],
+                    "required": ["project_id", "issue_iid"],
                 })
                 .as_object()
                 .unwrap()
