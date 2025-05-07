@@ -40,6 +40,7 @@ pub(crate) fn call(input: CallToolRequest) -> Result<CallToolResult, Error> {
         "gl_get_issue" => get_issue(input),
         "gl_update_issue" => update_issue(input),
         "gl_add_issue_comment" => add_issue_comment(input),
+        "gl_list_issues" => gl_list_issues(input),
 
         // Files
         "gl_get_file_contents" => get_file_contents(input),
@@ -1180,6 +1181,82 @@ fn gl_list_branches(input: CallToolRequest) -> Result<CallToolResult, Error> {
     }
 }
 
+fn gl_list_issues(input: CallToolRequest) -> Result<CallToolResult, Error> {
+    let args = input.params.arguments.clone().unwrap_or_default();
+    let (token, gitlab_url) = get_gitlab_config()?;
+
+    if let Some(Value::String(project_id)) = args.get("project_id") {
+        let mut url_params = vec![];
+
+        if let Some(Value::String(state)) = args.get("state") {
+            url_params.push(format!("state={}", state));
+        }
+        if let Some(Value::String(labels)) = args.get("labels") {
+            url_params.push(format!("labels={}", urlencoding::encode(labels)));
+        }
+
+        let query_string = if url_params.is_empty() {
+            "".to_string()
+        } else {
+            format!("?{}", url_params.join("&"))
+        };
+
+        let url = format!(
+            "{}/projects/{}/issues{}",
+            gitlab_url,
+            urlencode_if_needed(project_id),
+            query_string
+        );
+
+        let mut headers = BTreeMap::new();
+        headers.insert("PRIVATE-TOKEN".to_string(), token);
+        headers.insert("User-Agent".to_string(), "hyper-mcp/0.1.0".to_string());
+
+        let req = HttpRequest {
+            url,
+            headers,
+            method: Some("GET".to_string()),
+        };
+
+        let res = http::request::<()>(&req, None)?;
+
+        if is_success_status(res.status_code()) {
+            Ok(CallToolResult {
+                is_error: None,
+                content: vec![Content {
+                    annotations: None,
+                    text: Some(String::from_utf8_lossy(&res.body()).to_string()),
+                    mime_type: Some("application/json".to_string()),
+                    r#type: ContentType::Text,
+                    data: None,
+                }],
+            })
+        } else {
+            Ok(CallToolResult {
+                is_error: Some(true),
+                content: vec![Content {
+                    annotations: None,
+                    text: Some(format!("Failed to list issues: {}", res.status_code())),
+                    mime_type: None,
+                    r#type: ContentType::Text,
+                    data: None,
+                }],
+            })
+        }
+    } else {
+        Ok(CallToolResult {
+            is_error: Some(true),
+            content: vec![Content {
+                annotations: None,
+                text: Some("Please provide project_id".into()),
+                mime_type: None,
+                r#type: ContentType::Text,
+                data: None,
+            }],
+        })
+    }
+}
+
 pub(crate) fn describe() -> Result<ListToolsResult, Error> {
     Ok(ListToolsResult {
         tools: vec![
@@ -1282,6 +1359,31 @@ pub(crate) fn describe() -> Result<ListToolsResult, Error> {
                         },
                     },
                     "required": ["project_id", "issue_iid", "comment"],
+                })
+                .as_object()
+                .unwrap()
+                .clone(),
+            },
+            ToolDescription {
+                name: "gl_list_issues".into(),
+                description: "List issues for a project in GitLab. Supports filtering by state and labels.".into(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "project_id": {
+                            "type": "string",
+                            "description": "The project identifier - can be a numeric project ID (e.g. '123') or a URL-encoded path (e.g. 'group%2Fproject')",
+                        },
+                        "state": {
+                            "type": "string",
+                            "description": "Filter by state: 'opened', 'closed', or 'all'. Defaults to 'opened' if not specified by GitLab.",
+                        },
+                        "labels": {
+                            "type": "string",
+                            "description": "Comma-separated list of label names to filter by.",
+                        },
+                    },
+                    "required": ["project_id"],
                 })
                 .as_object()
                 .unwrap()
