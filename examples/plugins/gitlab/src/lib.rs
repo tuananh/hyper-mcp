@@ -9,6 +9,100 @@ use pdk::types::{
     CallToolRequest, CallToolResult, Content, ContentType, ListToolsResult, ToolDescription,
 };
 use serde_json::json;
+use termtree::Tree;
+
+// Helper struct for deserializing GitLab API response
+// https://docs.gitlab.com/api/repositories/#list-repository-tree
+#[derive(serde::Deserialize)]
+struct GitLabRepoEntry {
+    id: String,
+    name: String,
+    r#type: String, // "tree" or "blob"
+    path: String,
+    mode: String,
+}
+
+// Helper struct for building the tree
+#[derive(Debug)]
+struct FileTreeNode {
+    name: String,
+    children: BTreeMap<String, FileTreeNode>,
+}
+
+impl FileTreeNode {
+    fn new(name: &str) -> Self {
+        FileTreeNode {
+            name: name.to_string(),
+            children: BTreeMap::new(),
+        }
+    }
+
+    fn insert_path(&mut self, path_segments: &[&str]) {
+        if path_segments.is_empty() {
+            return;
+        }
+        let current_segment = path_segments[0];
+        let node = self
+            .children
+            .entry(current_segment.to_string())
+            .or_insert_with(|| FileTreeNode::new(current_segment));
+
+        if path_segments.len() > 1 {
+            node.insert_path(&path_segments[1..]);
+        }
+    }
+}
+
+// Renamed and modified function to convert FileTreeNode to termtree::Tree<String>
+fn convert_file_tree_to_termtree(file_node: &FileTreeNode) -> Tree<String> {
+    let mut tree_node = Tree::new(file_node.name.clone());
+    for child_file_node in file_node.children.values() { // Iterate over sorted children
+        tree_node.push(convert_file_tree_to_termtree(child_file_node));
+    }
+    tree_node
+}
+
+// New function to build and format the tree
+fn build_and_format_tree_from_entries(
+    entries: Vec<GitLabRepoEntry>,
+    requested_path_opt: Option<&str>,
+    project_id_str: &str,
+) -> Result<String, String> {
+    if entries.is_empty() {
+        return Ok("Repository tree is empty or path not found.".to_string());
+    }
+
+    let root_display_name = match requested_path_opt {
+        Some(req_path) if !req_path.is_empty() => req_path.split('/').next_back().unwrap_or("root").to_string(),
+        _ => project_id_str.split('/').next_back().unwrap_or("root").to_string(),
+    };
+
+    let mut root_node = FileTreeNode::new(&root_display_name);
+
+    for entry in entries {
+        let effective_path = match requested_path_opt {
+            Some(base_path_val) if !base_path_val.is_empty() && entry.path.starts_with(base_path_val) => {
+                entry.path.strip_prefix(base_path_val)
+                    .unwrap_or(&entry.path)
+                    .trim_start_matches('/')
+                    .to_string()
+            }
+            _ => entry.path.clone(),
+        };
+
+        if effective_path.is_empty() {
+            continue;
+        }
+
+        let path_segments: Vec<&str> = effective_path.split('/').filter(|s| !s.is_empty()).collect();
+        if !path_segments.is_empty() {
+            root_node.insert_path(&path_segments);
+        }
+    }
+
+    let termtree_root = convert_file_tree_to_termtree(&root_node); // Use the new conversion function
+    Ok(termtree_root.to_string())
+}
 
 fn get_gitlab_config() -> Result<(String, String), Error> {
     let token = config::get("GITLAB_TOKEN")?
@@ -21,7 +115,7 @@ fn get_gitlab_config() -> Result<(String, String), Error> {
 
 /// Helper function to check if an HTTP status code represents success (200-299)
 fn is_success_status(status_code: u16) -> bool {
-    status_code >= 200 && status_code < 300
+    (200..300).contains(&status_code)
 }
 
 fn urlencode_if_needed(input: &str) -> String {
@@ -58,6 +152,9 @@ pub(crate) fn call(input: CallToolRequest) -> Result<CallToolResult, Error> {
         "gl_update_snippet" => update_snippet(input),
         "gl_get_snippet" => get_snippet(input),
         "gl_delete_snippet" => delete_snippet(input),
+
+        // Repository tree
+        "gl_get_repo_tree" => gl_get_repo_tree(input),
 
         _ => Ok(CallToolResult {
             is_error: Some(true),
@@ -1263,6 +1360,152 @@ fn gl_list_issues(input: CallToolRequest) -> Result<CallToolResult, Error> {
     }
 }
 
+fn gl_get_repo_tree(input: CallToolRequest) -> Result<CallToolResult, Error> {
+    let args = input.params.arguments.clone().unwrap_or_default();
+    let (token, gitlab_url) = get_gitlab_config()?;
+
+    if let Some(Value::String(project_id_val)) = args.get("project_id") {
+        let project_id = project_id_val.as_str();
+        let requested_path_opt = args.get("path").and_then(|v| v.as_str());
+        let ref_name_opt = args.get("ref").and_then(|v| v.as_str());
+        let recursive_opt = args.get("recursive").and_then(|v| v.as_bool());
+
+        let mut all_entries: Vec<GitLabRepoEntry> = Vec::new();
+        let mut current_page_number: u32 = 1;
+        const PER_PAGE_COUNT: u32 = 100; // GitLab's typical max per_page
+        const MAX_PAGES: u32 = 100; // Safety break: 100 pages * 100 items/page = 10,000 items
+
+        loop {
+            if current_page_number > MAX_PAGES {
+                // Log this or return a partial result with a warning if desired
+                // For now, just break and use what we have.
+                // Consider returning an error if this limit is hit.
+                break; 
+            }
+
+            let mut url_params = vec![
+                format!("per_page={}", PER_PAGE_COUNT),
+                format!("page={}", current_page_number),
+            ];
+
+            if let Some(path_str) = requested_path_opt {
+                if !path_str.is_empty() {
+                    url_params.push(format!("path={}", urlencoding::encode(path_str)));
+                }
+            }
+            if let Some(ref_name_str) = ref_name_opt {
+                url_params.push(format!("ref={}", urlencoding::encode(ref_name_str)));
+            }
+            if let Some(recursive_bool) = recursive_opt {
+                if recursive_bool {
+                    url_params.push("recursive=true".to_string());
+                }
+            }
+
+            let query_string = format!("?{}", url_params.join("&"));
+            let url = format!(
+                "{}/projects/{}/repository/tree{}",
+                gitlab_url,
+                urlencode_if_needed(project_id),
+                query_string
+            );
+
+            let mut headers = BTreeMap::new();
+            headers.insert("PRIVATE-TOKEN".to_string(), token.clone()); // Clone token for loop
+            headers.insert("User-Agent".to_string(), "hyper-mcp/0.1.0".to_string());
+
+            let req = HttpRequest {
+                url: url.clone(),
+                headers,
+                method: Some("GET".to_string()),
+            };
+
+            let res = http::request::<()>(&req, None)?;
+
+            if !is_success_status(res.status_code()) {
+                return Ok(CallToolResult {
+                    is_error: Some(true),
+                    content: vec![Content {
+                        annotations: None,
+                        text: Some(format!(
+                            "Failed to get repository tree page {} from {}: {} - Response: {}",
+                            current_page_number,
+                            req.url,
+                            res.status_code(),
+                            String::from_utf8_lossy(&res.body())
+                        )),
+                        mime_type: None,
+                        r#type: ContentType::Text,
+                        data: None,
+                    }],
+                });
+            }
+
+            match serde_json::from_slice::<Vec<GitLabRepoEntry>>(&res.body()) {
+                Ok(page_entries) => {
+                    let num_fetched = page_entries.len();
+                    all_entries.extend(page_entries);
+
+                    if num_fetched < PER_PAGE_COUNT as usize {
+                        break; // Last page fetched
+                    }
+                }
+                Err(e) => {
+                    return Ok(CallToolResult {
+                        is_error: Some(true),
+                        content: vec![Content {
+                            annotations: None,
+                            text: Some(format!(
+                                "Failed to parse repository tree data from GitLab API (page {}): {}",
+                                current_page_number, e
+                            )),
+                            mime_type: None,
+                            r#type: ContentType::Text,
+                            data: None,
+                        }],
+                    });
+                }
+            }
+            current_page_number += 1;
+        }
+        
+        // Proceed with building the tree from all_entries
+        match build_and_format_tree_from_entries(all_entries, requested_path_opt, project_id) {
+            Ok(tree_string) => Ok(CallToolResult {
+                is_error: None,
+                content: vec![Content {
+                    annotations: None,
+                    text: Some(tree_string),
+                    mime_type: Some("text/plain".to_string()),
+                    r#type: ContentType::Text,
+                    data: None,
+                }],
+            }),
+            Err(e_str) => Ok(CallToolResult {
+                is_error: Some(true),
+                content: vec![Content {
+                    annotations: None,
+                    text: Some(e_str),
+                    mime_type: None,
+                    r#type: ContentType::Text,
+                    data: None,
+                }],
+            }),
+        }
+    } else {
+        Ok(CallToolResult {
+            is_error: Some(true),
+            content: vec![Content {
+                annotations: None,
+                text: Some("Please provide project_id".into()),
+                mime_type: None,
+                r#type: ContentType::Text,
+                data: None,
+            }],
+        })
+    }
+}
+
 pub(crate) fn describe() -> Result<ListToolsResult, Error> {
     Ok(ListToolsResult {
         tools: vec![
@@ -1657,6 +1900,35 @@ pub(crate) fn describe() -> Result<ListToolsResult, Error> {
                         "project_id": {
                             "type": "string",
                             "description": "The project identifier - can be a numeric project ID (e.g. '123') or a URL-encoded path (e.g. 'group%2Fproject')",
+                        },
+                    },
+                    "required": ["project_id"],
+                })
+                .as_object()
+                .unwrap()
+                .clone(),
+            },
+            ToolDescription {
+                name: "gl_get_repo_tree".into(),
+                description: "Get the list of files and directories in a project repository. Handles pagination internally.".into(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "project_id": {
+                            "type": "string",
+                            "description": "The project identifier - can be a numeric project ID (e.g. '123') or a URL-encoded path (e.g. 'group%2Fproject')",
+                        },
+                        "path": {
+                            "type": "string",
+                            "description": "The path inside the repository. Used to get content of subdirectories. Optional.",
+                        },
+                        "ref": {
+                            "type": "string",
+                            "description": "The name of a repository branch or tag or if not given the default branch. Optional.",
+                        },
+                        "recursive": {
+                            "type": "boolean",
+                            "description": "Boolean value used to get a recursive tree. Default is false. Optional.",
                         },
                     },
                     "required": ["project_id"],
