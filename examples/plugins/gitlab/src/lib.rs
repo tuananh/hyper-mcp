@@ -484,6 +484,12 @@ fn create_or_update_file(input: CallToolRequest) -> Result<CallToolResult, Error
         args.get("content"),
         args.get("branch"),
     ) {
+        let commit_message = args
+            .get("commit_message")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Update file via API")
+            .to_string();
+
         let url = format!(
             "{}/projects/{}/repository/files/{}",
             gitlab_url,
@@ -495,7 +501,7 @@ fn create_or_update_file(input: CallToolRequest) -> Result<CallToolResult, Error
         let mut body_map = serde_json::Map::new();
         body_map.insert("branch".to_string(), json!(branch));
         body_map.insert("content".to_string(), json!(content));
-        body_map.insert("commit_message".to_string(), json!("Update file via API"));
+        body_map.insert("commit_message".to_string(), json!(commit_message));
 
         // Add author fields if provided
         if let Some(Value::String(author_email)) = args.get("author_email") {
@@ -1443,6 +1449,10 @@ pub(crate) fn describe() -> Result<ListToolsResult, Error> {
                         "author_name": {
                             "type": "string",
                             "description": "The name of the commit author",
+                        },
+                        "commit_message": {
+                            "type": "string",
+                            "description": "The commit message. Defaults to 'Update file via API' if not specified.",
                         },
                     },
                     "required": ["project_id", "file_path", "content", "branch"],
