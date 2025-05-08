@@ -618,38 +618,86 @@ fn create_or_update_file(input: CallToolRequest) -> Result<CallToolResult, Error
             .unwrap_or("Update file via API")
             .to_string();
 
-        let url = format!(
+        // URL for checking file existence. Note: GitLab GET file API needs ref in query.
+        let check_file_url = format!(
+            "{}/projects/{}/repository/files/{}?ref={}",
+            gitlab_url,
+            urlencode_if_needed(project_id),
+            urlencode_if_needed(file_path),
+            branch
+        );
+        
+        let mut headers_check = BTreeMap::new();
+        headers_check.insert("PRIVATE-TOKEN".to_string(), token.clone());
+        headers_check.insert("User-Agent".to_string(), "hyper-mcp/0.1.0".to_string());
+
+        let check_req = HttpRequest {
+            url: check_file_url,
+            headers: headers_check,
+            method: Some("GET".to_string()),
+        };
+
+        let check_res = http::request::<()>(&check_req, None)?;
+        
+        let http_method = match check_res.status_code() {
+            200 => "PUT", // File exists, so update
+            404 => "POST", // File does not exist, so create
+            _ => {
+                return Ok(CallToolResult {
+                    is_error: Some(true),
+                    content: vec![Content {
+                        annotations: None,
+                        text: Some(format!(
+                            "Failed to check file existence (status {} on GET {}): {}",
+                            check_res.status_code(),
+                            check_req.url,
+                            String::from_utf8_lossy(&check_res.body())
+                        )),
+                        mime_type: None,
+                        r#type: ContentType::Text,
+                        data: None,
+                    }],
+                })
+            }
+        };
+
+        // URL for POST/PUT operations (does not have ref in query string, ref is in body via 'branch' parameter)
+        // Ensure file_path is URL encoded for this URL as well.
+        let operation_url = format!(
             "{}/projects/{}/repository/files/{}",
             gitlab_url,
             urlencode_if_needed(project_id),
-            urlencode_if_needed(file_path)
+            urlencode_if_needed(file_path) 
         );
 
-        // Build the body with optional author fields
         let mut body_map = serde_json::Map::new();
         body_map.insert("branch".to_string(), json!(branch));
         body_map.insert("content".to_string(), json!(content));
         body_map.insert("commit_message".to_string(), json!(commit_message));
 
-        // Add author fields if provided
         if let Some(Value::String(author_email)) = args.get("author_email") {
             body_map.insert("author_email".to_string(), json!(author_email));
         }
         if let Some(Value::String(author_name)) = args.get("author_name") {
             body_map.insert("author_name".to_string(), json!(author_name));
         }
+        // Note: For 'POST' (create), 'encoding' can be 'base64'. 
+        // GitLab API often expects content to be base64 encoded for new files if not plain text.
+        // For simplicity, we assume content is plain text, and GitLab handles it.
+        // If issues arise with binary or special characters, 'content' might need explicit base64 encoding
+        // and adding "encoding": "base64" to body_map.
 
         let body = Value::Object(body_map);
 
-        let mut headers = BTreeMap::new();
-        headers.insert("PRIVATE-TOKEN".to_string(), token);
-        headers.insert("Content-Type".to_string(), "application/json".to_string());
-        headers.insert("User-Agent".to_string(), "hyper-mcp/0.1.0".to_string());
+        let mut headers_op = BTreeMap::new();
+        headers_op.insert("PRIVATE-TOKEN".to_string(), token);
+        headers_op.insert("Content-Type".to_string(), "application/json".to_string());
+        headers_op.insert("User-Agent".to_string(), "hyper-mcp/0.1.0".to_string());
 
         let req = HttpRequest {
-            url,
-            headers,
-            method: Some("PUT".to_string()),
+            url: operation_url.clone(),
+            headers: headers_op,
+            method: Some(http_method.to_string()),
         };
 
         let res = http::request(&req, Some(&body.to_string()))?;
@@ -671,8 +719,12 @@ fn create_or_update_file(input: CallToolRequest) -> Result<CallToolResult, Error
                 content: vec![Content {
                     annotations: None,
                     text: Some(format!(
-                        "Failed to create/update file: {}",
-                        res.status_code()
+                        "Failed to {} file (method {}, status {} on {}): Response: {}",
+                        if http_method == "POST" { "create" } else { "update" },
+                        http_method,
+                        res.status_code(),
+                        req.url,
+                        String::from_utf8_lossy(&res.body())
                     )),
                     mime_type: None,
                     r#type: ContentType::Text,
