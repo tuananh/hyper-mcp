@@ -2,8 +2,8 @@
 
 [![Rust](https://img.shields.io/badge/rust-%23000000.svg?logo=rust&logoColor=white)](https://crates.io/crates/hyper-mcp)
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue)](#license)
-[![Issues - daytona](https://img.shields.io/github/issues/tuananh/hyper-mcp)](https://github.com/tuananh/hyper-mcp/issues)
-<!-- ![GitHub Release](https://img.shields.io/github/v/release/tuananh/hyper-mcp) -->
+[![Issues - hyper-mcp](https://img.shields.io/github/issues/tuananh/hyper-mcp)](https://github.com/tuananh/hyper-mcp/issues)
+![GitHub Release](https://img.shields.io/github/v/release/tuananh/hyper-mcp)
 
 </div>
 
@@ -27,7 +27,7 @@ hyper-mcp makes it easy to add AI capabilities to your applications. It works wi
 - Distribute plugins via standard OCI registries (like Docker Hub)
 - Built on [Extism](https://github.com/extism/extism) for rock-solid plugin support
 - Lightweight enough for resource-constrained environments
-- Support both `stdio` and SSE transport.
+- Support all 3 protocols in the spec: `stdio`, `sse` and `streamble-http`.
 - Deploy anywhere: serverless, edge, mobile, IoT devices
 - Cross-platform compatibility out of the box
 
