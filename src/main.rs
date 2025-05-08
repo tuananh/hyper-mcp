@@ -1,6 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use rmcp::transport::sse_server::SseServer;
+use rmcp::transport::streamable_http_server::axum::StreamableHttpServer;
 use rmcp::{ServiceExt, transport::stdio};
 use std::path::PathBuf;
 use tracing_subscriber::{self, EnvFilter};
@@ -33,7 +34,7 @@ struct Cli {
         value_name = "TRANSPORT",
         env = "HYPER_MCP_TRANSPORT",
         default_value = "stdio",
-        value_parser = ["stdio", "sse"]
+        value_parser = ["stdio", "sse", "streamable-http"]
     )]
     transport: String,
 
@@ -139,6 +140,15 @@ async fn main() -> Result<()> {
         "sse" => {
             tracing::info!("Starting SSE server at {}", cli.bind_address);
             let ct = SseServer::serve(cli.bind_address.parse()?)
+                .await?
+                .with_service(move || plugin_service.clone());
+
+            tokio::signal::ctrl_c().await?;
+            ct.cancel();
+        }
+        "streamable-http" => {
+            tracing::info!("Starting Streamable HTTP server at {}", cli.bind_address);
+            let ct = StreamableHttpServer::serve(cli.bind_address.parse()?)
                 .await?
                 .with_service(move || plugin_service.clone());
 
