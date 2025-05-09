@@ -2,6 +2,22 @@
 
 This plugin provides tools to interact with the Context7 API, allowing for resolving library IDs and fetching documentation.
 
+## Usage
+
+```
+{
+  "plugins": [
+    {
+      "name": "context7",
+      "path": "oci://ghcr.io/tuananh/context7-plugin:nightly",
+      "runtime_config": {
+        "allowed_hosts": ["context7.com"]
+      }
+    }
+  ]
+}
+```
+
 ## Tools
 
 ### 1. `c7_resolve_library_id`
