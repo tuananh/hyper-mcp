@@ -60,26 +60,7 @@ jobs:
             docker push $image_name
             
             cosign sign --yes $image_name
-            echo $plugin_name >> plugins.txt
           done
-
-      # TODO: find a better way to do this
-      - name: Create and push multi-arch nightly tags
-        if: matrix.arch == 'amd64'
-        run: |
-          # Main image
-          docker buildx imagetools create \
-            -t ${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:nightly \
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:nightly-amd64 \
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:nightly-arm64
-
-          # Plugin images
-          while read plugin_name; do
-            docker buildx imagetools create \
-              -t ${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin:nightly \
-              ${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin:nightly-amd64 \
-              ${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin:nightly-arm64
-          done < plugins.txt
 
   # do this before we build nightly binaries
   prepare-nightly-release:
@@ -181,3 +162,40 @@ jobs:
             cosign verify ghcr.io/${{ github.repository_owner }}/hyper-mcp:nightly
             cosign verify ghcr.io/${{ github.repository_owner }}/<plugin-name>-plugin:nightly
             ```
+
+  create-multiarch-manifests:
+    needs: build-oci-images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download plugin list
+        uses: actions/download-artifact@v4
+        with:
+          name: plugins
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push multi-arch nightly tags
+        run: |
+          # Main image
+          docker buildx imagetools create \
+            -t ${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:nightly \
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:nightly-amd64 \
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:nightly-arm64
+
+          # Plugin images
+          for plugin in examples/plugins/*/; do
+            plugin_name=$(basename $plugin)
+            docker buildx imagetools create \
+              -t ${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin:nightly \
+              ${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin:nightly-amd64 \
+              ${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin:nightly-arm64
+          done
