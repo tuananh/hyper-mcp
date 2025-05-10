@@ -75,7 +75,7 @@ Built with security-first mindset:
       "path": "oci://ghcr.io/tuananh/fetch-plugin:latest",
       "runtime_config": {
         "allowed_hosts": ["*"],
-        "memory_limit": "100mb"
+        "memory_limit": "100 MB"
       }
     }
   ]
