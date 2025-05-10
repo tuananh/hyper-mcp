@@ -15,8 +15,9 @@ jobs:
       matrix:
         include:
           - os: ubuntu-24.04
+            arch: amd64
           - os: ubuntu-24.04-arm
-            
+            arch: arm64
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
@@ -45,7 +46,7 @@ jobs:
       - name: Build and push hyper-mcp
         run: |
           echo "Building hyper-mcp image"
-          hyper_mcp_image="${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:nightly"
+          hyper_mcp_image="${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:nightly-${{ matrix.arch }}"
           docker build -t $hyper_mcp_image .
           docker push $hyper_mcp_image
           cosign sign --yes $hyper_mcp_image
@@ -54,12 +55,31 @@ jobs:
             plugin_name=$(basename $plugin)
             echo "Building plugin: $plugin_name"
             
-            image_name="${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin:nightly"
+            image_name="${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin:nightly-${{ matrix.arch }}"
             docker build -t $image_name $plugin
             docker push $image_name
             
             cosign sign --yes $image_name
+            echo $plugin_name >> plugins.txt
           done
+
+      # TODO: find a better way to do this
+      - name: Create and push multi-arch nightly tags
+        if: matrix.arch == 'amd64'
+        run: |
+          # Main image
+          docker buildx imagetools create \
+            -t ${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:nightly \
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:nightly-amd64 \
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:nightly-arm64
+
+          # Plugin images
+          while read plugin_name; do
+            docker buildx imagetools create \
+              -t ${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin:nightly \
+              ${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin:nightly-amd64 \
+              ${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin:nightly-arm64
+          done < plugins.txt
 
   # do this before we build nightly binaries
   prepare-nightly-release:
