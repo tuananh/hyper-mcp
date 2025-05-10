@@ -34,6 +34,7 @@ tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 rmcp = { git = "https://github.com/modelcontextprotocol/rust-sdk", rev = "57e14c56e85deebc434eb11e4866e3f5ec77d906", features = ["server", "transport-io", "transport-sse", "transport-sse-server", "transport-streamable-http-server"] }
 serde_yaml = "0.9.34"
 toml = "0.8.22"
+bytesize = "2.0.1"
 
 [[bin]]
 name = "hyper-mcp"

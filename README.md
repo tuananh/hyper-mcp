@@ -74,7 +74,8 @@ Built with security-first mindset:
       "name": "fetch",
       "path": "oci://ghcr.io/tuananh/fetch-plugin:latest",
       "runtime_config": {
-        "allowed_hosts": ["*"]
+        "allowed_hosts": ["*"],
+        "memory_limit": "100mb"
       }
     }
   ]
@@ -87,9 +88,9 @@ Built with security-first mindset:
 $ hyper-mcp
 ```
 
-- By default, it will use `stdio` transport. If you want to use SSE, use flag `--transport sse`.
+- By default, it will use `stdio` transport. If you want to use SSE, use flag `--transport sse` or streamable HTTP with `--transport streamable-http`.
 - If you want to debug, use `RUST_LOG=info`.
-- If you're loading unsigned OCI plugin, you need to set `insecure_skip_signature` to `true` in your config file.
+- If you're loading unsigned OCI plugin, you need to set `insecure_skip_signature` flag or env var `HYPER_MCP_INSECURE_SKIP_SIGNATURE` to `true`
 
 ## Using with Cursor IDE
 
@@ -133,6 +134,7 @@ We maintain several example plugins to get you started:
 - [qdrant](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/qdrant): keeping & retrieving memories to Qdrant vector search engine (Rust)
 - [gitlab](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/gitlab): GitLab plugin (Rust)
 - [meme-generator](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/meme-generator): Meme generator (Rust)
+- [context7](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/context7): Lookup library documentation (Rust)
 
 
 ### Community-built plugins

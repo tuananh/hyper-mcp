@@ -2,9 +2,11 @@ use crate::Cli;
 use crate::config::Config;
 use crate::oci::OciDownloader;
 use anyhow::Result;
+use bytesize::ByteSize;
 use extism::{Manifest, Plugin, Wasm};
 use rmcp::service::{RequestContext, RoleServer};
 use rmcp::{Error as McpError, ServerHandler, model::*};
+use std::str::FromStr;
 
 use serde_json::json;
 use sha2::{Digest, Sha256};
@@ -101,6 +103,23 @@ impl PluginService {
                 if let Some(env_vars) = &runtime_cfg.env_vars {
                     for (key, value) in env_vars {
                         manifest = manifest.with_config_key(key, value);
+                    }
+                }
+
+                if let Some(memory_limit) = &runtime_cfg.memory_limit {
+                    match ByteSize::from_str(memory_limit) {
+                        Ok(b) => {
+                            // Wasm page size 64KiB, convert to number of pages
+                            let num_pages = b.as_u64() / (64 * 1024);
+                            manifest = manifest.with_memory_max(num_pages as u32);
+                        }
+                        Err(e) => {
+                            log::error!(
+                                "Failed to parse memory_limit '{}': {}. Using default memory limit.",
+                                memory_limit,
+                                e
+                            );
+                        }
                     }
                 }
             }
