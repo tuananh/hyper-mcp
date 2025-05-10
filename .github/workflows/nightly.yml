@@ -11,7 +11,13 @@ env:
 
 jobs:
   build-oci-images:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-24.04
+          - os: ubuntu-24.04-arm
+            
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: write
       packages: write
@@ -56,7 +62,7 @@ jobs:
           done
 
   # do this before we build nightly binaries
-  prepare-release:
+  prepare-nightly-release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -74,20 +80,17 @@ jobs:
       - name: Delete existing nightly release
         run: gh release delete nightly --yes || true
 
-  build-binaries:
-    needs: prepare-release
+  build-nightly-binaries:
+    needs: prepare-nightly-release
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             arch: x86_64
             target: x86_64-unknown-linux-gnu
           - os: ubuntu-24.04-arm
             arch: aarch64
             target: aarch64-unknown-linux-gnu
-          # - os: macos-13
-          #   arch: x86_64
-          #   target: x86_64-apple-darwin
           - os: macos-latest
             arch: aarch64
             target: aarch64-apple-darwin
