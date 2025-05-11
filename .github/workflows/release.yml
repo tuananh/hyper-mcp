@@ -11,7 +11,14 @@ env:
 
 jobs:
   build-oci-images:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-24.04 # For amd64, consistent with nightly
+            arch: amd64
+          - os: ubuntu-24.04-arm # For arm64
+            arch: arm64
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: write
       packages: write
@@ -36,23 +43,24 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # tag images with both git tag & latest
-      - name: Build and push hyper-mcp
+      - name: Build and push hyper-mcp arch specific image
         run: |
           TAG=${GITHUB_REF#refs/tags/}
-          hyper_mcp_image="${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp"
-          echo "Building and tagging: $hyper_mcp_image:$TAG and $hyper_mcp_image:latest"
-          docker build -t $hyper_mcp_image:$TAG -t $hyper_mcp_image:latest .
-          
-          docker push $hyper_mcp_image:$TAG
-          docker push $hyper_mcp_image:latest
+          hyper_mcp_image_arch="${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:$TAG-${{ matrix.arch }}"
+          echo "Building and tagging arch specific image: $hyper_mcp_image_arch for ${{ matrix.arch }}"
+          docker build -t $hyper_mcp_image_arch .
+          docker push $hyper_mcp_image_arch
+          cosign sign --yes $hyper_mcp_image_arch
 
-          cosign sign --yes $hyper_mcp_image:$TAG
-          cosign sign --yes $hyper_mcp_image:latest
-
+      - name: Build and push plugin images (on amd64 only)
+        if: matrix.arch == 'amd64'
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
           for plugin in examples/plugins/*/; do
             plugin_name=$(basename $plugin)
             plugin_base_image="${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin"
 
+            echo "Building and tagging plugin: $plugin_name as $plugin_base_image:$TAG and $plugin_base_image:latest"
             docker build -t $plugin_base_image:$TAG -t $plugin_base_image:latest $plugin
 
             docker push $plugin_base_image:$TAG
@@ -61,6 +69,48 @@ jobs:
             cosign sign --yes $plugin_base_image:$TAG
             cosign sign --yes $plugin_base_image:latest
           done
+
+  create-multiarch-manifests:
+    needs: build-oci-images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read 
+      packages: write
+      id-token: write # needed for keyless signing
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb # v3.8.2
+        
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push multi-arch manifest for hyper-mcp
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          hyper_mcp_base_image="${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp"
+
+          echo "Creating multi-arch manifest for $hyper_mcp_base_image:$TAG"
+          docker buildx imagetools create \\
+            -t $hyper_mcp_base_image:$TAG \\
+            $hyper_mcp_base_image:$TAG-amd64 \\
+            $hyper_mcp_base_image:$TAG-arm64
+          cosign sign --yes $hyper_mcp_base_image:$TAG
+
+          echo "Creating multi-arch manifest for $hyper_mcp_base_image:latest"
+          docker buildx imagetools create \\
+            -t $hyper_mcp_base_image:latest \\
+            $hyper_mcp_base_image:$TAG-amd64 \\
+            $hyper_mcp_base_image:$TAG-arm64
+          cosign sign --yes $hyper_mcp_base_image:latest
 
   build-binaries:
     strategy:

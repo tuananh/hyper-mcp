@@ -51,11 +51,16 @@ jobs:
           docker push $hyper_mcp_image
           cosign sign --yes $hyper_mcp_image
 
+      # we dont need to build multi-arch plugin images as they are wasm32-wasip1
+      # so we can just build amd64 and push it to the registry
+      - name: Build and push plugin images
+        if: matrix.arch == 'amd64'
+        run: |
           for plugin in examples/plugins/*/; do
             plugin_name=$(basename $plugin)
             echo "Building plugin: $plugin_name"
             
-            image_name="${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin:nightly-${{ matrix.arch }}"
+            image_name="${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin:nightly"
             docker build -t $image_name $plugin
             docker push $image_name
             
@@ -197,14 +202,3 @@ jobs:
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:nightly-arm64
 
           cosign sign --yes ${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:nightly
-
-          # Plugin images
-          for plugin in examples/plugins/*/; do
-            plugin_name=$(basename $plugin)
-            docker buildx imagetools create \
-              -t ${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin:nightly \
-              ${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin:nightly-amd64 \
-              ${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin:nightly-arm64
-
-            cosign sign --yes ${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin:nightly
-          done
