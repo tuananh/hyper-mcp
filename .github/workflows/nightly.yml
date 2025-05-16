@@ -54,8 +54,8 @@ jobs:
           echo "Building hyper-mcp image"
           ghcr_image="ghcr.io/${{ github.repository_owner }}/hyper-mcp:nightly-${{ matrix.arch }}"
           dockerhub_image="docker.io/tuananh/hyper-mcp:nightly-${{ matrix.arch }}"
-          docker build -t $ghcr_image $dockerhub_image .
-          
+          docker build -t $ghcr_image -t $dockerhub_image .
+
           docker push $ghcr_image
           docker push $dockerhub_image
 
