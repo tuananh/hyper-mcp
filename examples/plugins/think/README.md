@@ -6,6 +6,8 @@ A simple MCP plugin that returns the provided thought string. Useful for agentic
 
 Takes a `thought` parameter (string) and simply returns it as the result. No side effects, no logging, no database or network calls.
 
+Read more about the think tool in [this blog post](https://www.anthropic.com/engineering/claude-think-tool).
+
 ## Usage
 
 Call with:
