@@ -7,7 +7,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  REGISTRY: ghcr.io
 
 jobs:
   build-oci-images:
@@ -39,17 +38,29 @@ jobs:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to DockerHub Registry
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
       - name: Build and push hyper-mcp
         run: |
           echo "Building hyper-mcp image"
-          hyper_mcp_image="${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:nightly-${{ matrix.arch }}"
-          docker build -t $hyper_mcp_image .
-          docker push $hyper_mcp_image
-          cosign sign --yes $hyper_mcp_image
+          ghcr_image="ghcr.io/${{ github.repository_owner }}/hyper-mcp:nightly-${{ matrix.arch }}"
+          dockerhub_image="docker.io/tuananh/hyper-mcp:nightly-${{ matrix.arch }}"
+          docker build -t $ghcr_image $dockerhub_image .
+          
+          docker push $ghcr_image
+          docker push $dockerhub_image
+
+          cosign sign --yes $ghcr_image
+          cosign sign --yes $dockerhub_image
 
       # we dont need to build multi-arch plugin images as they are wasm32-wasip1
       # so we can just build amd64 and push it to the registry
@@ -60,7 +71,7 @@ jobs:
             plugin_name=$(basename $plugin)
             echo "Building plugin: $plugin_name"
             
-            image_name="${{ env.REGISTRY }}/${{ github.repository_owner }}/${plugin_name}-plugin:nightly"
+            image_name="ghcr.io/${{ github.repository_owner }}/${plugin_name}-plugin:nightly"
             docker build -t $image_name $plugin
             docker push $image_name
             
@@ -189,7 +200,7 @@ jobs:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -197,8 +208,8 @@ jobs:
         run: |
           # Main image
           docker buildx imagetools create \
-            -t ${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:nightly \
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:nightly-amd64 \
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:nightly-arm64
+            -t ghcr.io/${{ github.repository_owner }}/hyper-mcp:nightly \
+            ghcr.io/${{ github.repository_owner }}/hyper-mcp:nightly-amd64 \
+            ghcr.io/${{ github.repository_owner }}/hyper-mcp:nightly-arm64
 
-          cosign sign --yes ${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp:nightly
+          cosign sign --yes ghcr.io/${{ github.repository_owner }}/hyper-mcp:nightly
