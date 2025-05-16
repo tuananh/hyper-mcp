@@ -213,3 +213,11 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/hyper-mcp:nightly-arm64
 
           cosign sign --yes ghcr.io/${{ github.repository_owner }}/hyper-mcp:nightly
+
+          # DockerHub
+          docker buildx imagetools create \
+            -t tuananh/hyper-mcp:nightly \
+            tuananh/hyper-mcp:nightly-amd64 \
+            tuananh/hyper-mcp:nightly-arm64
+
+          cosign sign --yes tuananh/hyper-mcp:nightly
