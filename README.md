@@ -135,6 +135,7 @@ We maintain several example plugins to get you started:
 - [gitlab](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/gitlab): GitLab plugin (Rust)
 - [meme-generator](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/meme-generator): Meme generator (Rust)
 - [context7](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/context7): Lookup library documentation (Rust)
+- [think](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/think): Think tool(Rust)
 
 
 ### Community-built plugins
