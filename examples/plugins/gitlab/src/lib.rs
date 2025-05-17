@@ -139,6 +139,7 @@ pub(crate) fn call(input: CallToolRequest) -> Result<CallToolResult, Error> {
         // Files
         "gl_get_file_contents" => get_file_contents(input),
         "gl_create_or_update_file" => create_or_update_file(input),
+        "gl_delete_file" => delete_file(input),
 
         // Branches
         "gl_create_branch" => create_branch(input),
@@ -589,6 +590,97 @@ fn get_file_contents(input: CallToolRequest) -> Result<CallToolResult, Error> {
             content: vec![Content {
                 annotations: None,
                 text: Some("Please provide project_id and file_path".into()),
+                mime_type: None,
+                r#type: ContentType::Text,
+                data: None,
+            }],
+        })
+    }
+}
+
+fn delete_file(input: CallToolRequest) -> Result<CallToolResult, Error> {
+    let args = input.params.arguments.clone().unwrap_or_default();
+    let (token, gitlab_url) = get_gitlab_config()?;
+
+    if let (
+        Some(Value::String(project_id)),
+        Some(Value::String(file_path)),
+        Some(Value::String(branch)),
+    ) = (
+        args.get("project_id"),
+        args.get("file_path"),
+        args.get("branch"),
+    ) {
+        let commit_message = args
+            .get("commit_message")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Delete file via API")
+            .to_string();
+
+        let url = format!(
+            "{}/projects/{}/repository/files/{}",
+            gitlab_url,
+            urlencode_if_needed(project_id),
+            urlencode_if_needed(file_path)
+        );
+
+        let mut headers = BTreeMap::new();
+        headers.insert("PRIVATE-TOKEN".to_string(), token);
+        headers.insert("Content-Type".to_string(), "application/json".to_string());
+        headers.insert("User-Agent".to_string(), "hyper-mcp/0.1.0".to_string());
+
+        let mut body_map = serde_json::Map::new();
+        body_map.insert("branch".to_string(), json!(branch));
+        body_map.insert("commit_message".to_string(), json!(commit_message));
+        if let Some(Value::String(author_email)) = args.get("author_email") {
+            body_map.insert("author_email".to_string(), json!(author_email));
+        }
+        if let Some(Value::String(author_name)) = args.get("author_name") {
+            body_map.insert("author_name".to_string(), json!(author_name));
+        }
+        let body = Value::Object(body_map);
+
+        let req = HttpRequest {
+            url,
+            headers,
+            method: Some("DELETE".to_string()),
+        };
+
+        let res = http::request(&req, Some(&body.to_string()))?;
+
+        if is_success_status(res.status_code()) {
+            Ok(CallToolResult {
+                is_error: None,
+                content: vec![Content {
+                    annotations: None,
+                    text: Some(String::from_utf8_lossy(&res.body()).to_string()),
+                    mime_type: Some("application/json".to_string()),
+                    r#type: ContentType::Text,
+                    data: None,
+                }],
+            })
+        } else {
+            Ok(CallToolResult {
+                is_error: Some(true),
+                content: vec![Content {
+                    annotations: None,
+                    text: Some(format!(
+                        "Failed to delete file (status {}): {}",
+                        res.status_code(),
+                        String::from_utf8_lossy(&res.body())
+                    )),
+                    mime_type: None,
+                    r#type: ContentType::Text,
+                    data: None,
+                }],
+            })
+        }
+    } else {
+        Ok(CallToolResult {
+            is_error: Some(true),
+            content: vec![Content {
+                annotations: None,
+                text: Some("Please provide project_id, file_path, and branch".into()),
                 mime_type: None,
                 r#type: ContentType::Text,
                 data: None,
@@ -1722,6 +1814,43 @@ fn gl_get_repo_members(input: CallToolRequest) -> Result<CallToolResult, Error> 
 pub(crate) fn describe() -> Result<ListToolsResult, Error> {
     Ok(ListToolsResult {
         tools: vec![
+            ToolDescription {
+                name: "gl_delete_file".into(),
+                description: "Delete a file in a GitLab project repository. Requires project_id, file_path, branch, and optional commit_message.".into(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "project_id": {
+                            "type": "string",
+                            "description": "The project identifier - can be a numeric project ID (e.g. '123') or a URL-encoded path (e.g. 'group%2Fproject')",
+                        },
+                        "file_path": {
+                            "type": "string",
+                            "description": "The path to the file in the project",
+                        },
+                        "branch": {
+                            "type": "string",
+                            "description": "The name of the branch to delete the file from",
+                        },
+                        "commit_message": {
+                            "type": "string",
+                            "description": "The commit message. Optional, defaults to 'Delete file via API'",
+                        },
+                        "author_email": {
+                            "type": "string",
+                            "description": "The email of the commit author. Optional.",
+                        },
+                        "author_name": {
+                            "type": "string",
+                            "description": "The name of the commit author. Optional.",
+                        },
+                    },
+                    "required": ["project_id", "file_path", "branch"],
+                })
+                .as_object()
+                .unwrap()
+                .clone(),
+            },
             ToolDescription {
                 name: "gl_create_issue".into(),
                 description: "Create a new issue in a GitLab project".into(),

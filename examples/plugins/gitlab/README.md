@@ -41,6 +41,7 @@ The plugin requires the following configuration:
 ### Files
 - [x] `gl_get_file_contents`: Get file contents
 - [x] `gl_create_or_update_file`: Create or update a file
+- [x] `gl_delete_file`: Delete a file from the repository
 - [ ] `gl_push_files`: Push multiple files
 
 ### Branches and Merge Requests
