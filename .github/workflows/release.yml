@@ -99,16 +99,16 @@ jobs:
           hyper_mcp_base_image="${{ env.REGISTRY }}/${{ github.repository_owner }}/hyper-mcp"
 
           echo "Creating multi-arch manifest for $hyper_mcp_base_image:$TAG"
-          docker buildx imagetools create \\
-            -t $hyper_mcp_base_image:$TAG \\
-            $hyper_mcp_base_image:$TAG-amd64 \\
+          docker buildx imagetools create \
+            -t $hyper_mcp_base_image:$TAG \
+            $hyper_mcp_base_image:$TAG-amd64 \
             $hyper_mcp_base_image:$TAG-arm64
           cosign sign --yes $hyper_mcp_base_image:$TAG
 
           echo "Creating multi-arch manifest for $hyper_mcp_base_image:latest"
-          docker buildx imagetools create \\
-            -t $hyper_mcp_base_image:latest \\
-            $hyper_mcp_base_image:$TAG-amd64 \\
+          docker buildx imagetools create \
+            -t $hyper_mcp_base_image:latest \
+            $hyper_mcp_base_image:$TAG-amd64 \
             $hyper_mcp_base_image:$TAG-arm64
           cosign sign --yes $hyper_mcp_base_image:latest
 
