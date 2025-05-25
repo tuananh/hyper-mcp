@@ -16,7 +16,7 @@ pub const SERVER_VERSION: &str = "0.1.0";
 pub const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1:3001";
 
 #[derive(Parser, Clone)]
-#[command(author = "Tuan Anh Tran <me@tuananh.org>", version, about, long_about = None)]
+#[command(author = "Tuan Anh Tran <me@tuananh.org>", version = env!("CARGO_PKG_VERSION"), about, long_about = None)]
 struct Cli {
     #[arg(short, long, value_name = "FILE")]
     config_file: Option<PathBuf>,
