@@ -16,7 +16,7 @@ documentation = "https://github.com/tuananh/hyper-mcp"
 tokio = { version = "=1.45.1", features = ["full"] }
 serde = { version = "=1.0.219", features = ["derive"] }
 serde_json = "=1.0.140"
-reqwest = { version = "=0.12.18", features = ["json"] }
+reqwest = { version = "=0.12.19", features = ["json"] }
 anyhow = "=1.0.98"
 extism = "=1.11.1"
 sha2 = "=0.10.9"
