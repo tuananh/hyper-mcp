@@ -1,7 +1,9 @@
 use anyhow::Result;
 use clap::Parser;
 use rmcp::transport::sse_server::SseServer;
-use rmcp::transport::streamable_http_server::axum::StreamableHttpServer;
+use rmcp::transport::streamable_http_server::{
+    StreamableHttpService, session::local::LocalSessionManager,
+};
 use rmcp::{ServiceExt, transport::stdio};
 use std::path::PathBuf;
 use tracing_subscriber::{self, EnvFilter};
@@ -10,9 +12,6 @@ mod config;
 mod oci;
 mod plugins;
 
-pub const JSONRPC_VERSION: &str = "2.0";
-pub const SERVER_NAME: &str = "hyper-mcp";
-pub const SERVER_VERSION: &str = "0.1.0";
 pub const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1:3001";
 
 #[derive(Parser, Clone)]
@@ -138,7 +137,10 @@ async fn main() -> Result<()> {
             service.waiting().await?;
         }
         "sse" => {
-            tracing::info!("Starting SSE server at {}", cli.bind_address);
+            tracing::info!(
+                "Starting hyper-mcp with SSE transport at {}",
+                cli.bind_address
+            );
             let ct = SseServer::serve(cli.bind_address.parse()?)
                 .await?
                 .with_service(move || plugin_service.clone());
@@ -147,13 +149,29 @@ async fn main() -> Result<()> {
             ct.cancel();
         }
         "streamable-http" => {
-            tracing::info!("Starting Streamable HTTP server at {}", cli.bind_address);
-            let ct = StreamableHttpServer::serve(cli.bind_address.parse()?)
-                .await?
-                .with_service(move || plugin_service.clone());
+            tracing::info!(
+                "Starting hyper-mcp with streamable-http transport at {}",
+                cli.bind_address
+            );
 
-            tokio::signal::ctrl_c().await?;
-            ct.cancel();
+            let service = StreamableHttpService::new(
+                move || plugin_service.clone(),
+                LocalSessionManager::default().into(),
+                Default::default(),
+            );
+
+            let router = axum::Router::new().nest_service("/mcp", service);
+
+            let tcp_listener = tokio::net::TcpListener::bind(cli.bind_address).await?;
+            let _ = axum::serve(tcp_listener, router)
+                .with_graceful_shutdown(async {
+                    tokio::signal::ctrl_c().await.unwrap();
+                    tracing::info!("Received Ctrl+C, shutting down hyper-mcp server...");
+                    // Give the log a moment to flush
+                    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                    std::process::exit(0);
+                })
+                .await;
         }
         _ => unreachable!(),
     }

@@ -4,7 +4,7 @@ use crate::oci::OciDownloader;
 use anyhow::Result;
 use bytesize::ByteSize;
 use extism::{Manifest, Plugin, Wasm};
-use rmcp::service::{RequestContext, RoleServer};
+use rmcp::service::{NotificationContext, RequestContext, RoleServer};
 use rmcp::{Error as McpError, ServerHandler, model::*};
 use std::str::FromStr;
 
@@ -278,7 +278,10 @@ impl ServerHandler for PluginService {
         std::future::ready(Ok(()))
     }
 
-    fn on_initialized(&self) -> impl Future<Output = ()> + Send + '_ {
+    fn on_initialized(
+        &self,
+        _context: NotificationContext<RoleServer>,
+    ) -> impl Future<Output = ()> + Send + '_ {
         tracing::info!("got initialized notification");
         std::future::ready(())
     }
@@ -286,6 +289,7 @@ impl ServerHandler for PluginService {
     fn on_cancelled(
         &self,
         _notification: CancelledNotificationParam,
+        _context: NotificationContext<RoleServer>,
     ) -> impl Future<Output = ()> + Send + '_ {
         std::future::ready(())
     }
@@ -293,6 +297,7 @@ impl ServerHandler for PluginService {
     fn on_progress(
         &self,
         _notification: ProgressNotificationParam,
+        _context: NotificationContext<RoleServer>,
     ) -> impl Future<Output = ()> + Send + '_ {
         std::future::ready(())
     }

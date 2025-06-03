@@ -31,10 +31,11 @@ log = "=0.4.27"
 sigstore = { version = "=0.12.1", features = ["cosign", "verify", "bundle"] }
 tracing = "=0.1.41"
 tracing-subscriber = { version = "=0.3.19", features = ["env-filter"] }
-rmcp = { git = "https://github.com/modelcontextprotocol/rust-sdk", rev = "22134eb33e249a3b3ae6c0153b0176e4dd532220", features = ["server", "transport-io", "transport-sse-server", "transport-streamable-http-server"] }
+rmcp = { git = "https://github.com/modelcontextprotocol/rust-sdk", rev = "a66f66ae345a0fafde1e2ee496ec137d77aef82a", features = ["server", "transport-io", "transport-sse-server", "transport-streamable-http-server"] }
 serde_yaml = "=0.9.34"
 toml = "=0.8.22"
 bytesize = "=2.0.1"
+axum = "=0.8.4"
 
 [[bin]]
 name = "hyper-mcp"
