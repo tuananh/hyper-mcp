@@ -83,7 +83,6 @@ impl PluginService {
             } else {
                 tokio::fs::read(&plugin_cfg.path).await?
             };
-
             let mut manifest = Manifest::new([Wasm::data(wasm_content)]);
             if let Some(runtime_cfg) = &plugin_cfg.runtime_config {
                 log::info!("runtime_cfg: {:?}", runtime_cfg);
@@ -129,7 +128,16 @@ impl PluginService {
             if let Ok(result) = plugin.call::<&str, &str>("describe", "") {
                 if let Ok(parsed) = serde_json::from_str::<ListToolsResult>(result) {
                     let mut cache = self.tool_plugin_map.write().await;
+                    let skip_tools = plugin_cfg
+                        .runtime_config
+                        .as_ref()
+                        .and_then(|rc| rc.skip_tools.clone())
+                        .unwrap_or_default();
                     for tool in parsed.tools {
+                        if skip_tools.iter().any(|s| s == tool.name.as_ref() as &str) {
+                            log::info!("Skipping tool {} as requested in skip_tools", tool.name);
+                            continue;
+                        }
                         log::info!("Saving tool {}/{} to cache", plugin_cfg.name, tool.name);
                         // Check if the tool name already exists in another plugin
                         if let Some(existing_plugin) = cache.get(&tool.name.to_string()) {
@@ -231,20 +239,32 @@ impl ServerHandler for PluginService {
         // Clear the existing cache when listing tools
         tool_cache.clear();
 
-        for (plugin_name, plugin) in plugins.iter_mut() {
-            match plugin.call::<&str, &str>("describe", "") {
-                Ok(result) => {
-                    let parsed: ListToolsResult = serde_json::from_str(result).unwrap();
-
-                    // Update the tool-to-plugin cache
-                    for tool in &parsed.tools {
-                        tool_cache.insert(tool.name.to_string(), plugin_name.clone());
+        for plugin_cfg in &self.config.plugins {
+            if let Some(plugin) = plugins.get_mut(&plugin_cfg.name) {
+                match plugin.call::<&str, &str>("describe", "") {
+                    Ok(result) => {
+                        if let Ok(parsed) = serde_json::from_str::<ListToolsResult>(result) {
+                            let skip_tools = plugin_cfg
+                                .runtime_config
+                                .as_ref()
+                                .and_then(|rc| rc.skip_tools.clone())
+                                .unwrap_or_default();
+                            for tool in parsed.tools {
+                                if skip_tools.iter().any(|s| s == tool.name.as_ref() as &str) {
+                                    log::info!(
+                                        "Skipping tool {} as requested in skip_tools",
+                                        tool.name
+                                    );
+                                    continue;
+                                }
+                                tool_cache.insert(tool.name.to_string(), plugin_cfg.name.clone());
+                                payload.tools.push(tool);
+                            }
+                        }
                     }
-
-                    payload.tools.extend(parsed.tools);
-                }
-                Err(e) => {
-                    log::error!("tool {} describe() error: {}", plugin_name, e);
+                    Err(e) => {
+                        log::error!("tool {} describe() error: {}", plugin_cfg.name, e);
+                    }
                 }
             }
         }

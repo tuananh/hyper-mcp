@@ -150,7 +150,7 @@ async fn main() -> Result<()> {
         }
         "streamable-http" => {
             tracing::info!(
-                "Starting hyper-mcp with streamable-http transport at {}",
+                "Starting hyper-mcp with streamable-http transport at {}/mcp",
                 cli.bind_address
             );
 

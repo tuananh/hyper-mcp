@@ -15,8 +15,10 @@ pub struct PluginConfig {
     pub runtime_config: Option<RuntimeConfig>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct RuntimeConfig {
+    // List of tool names to skip loading at runtime.
+    pub skip_tools: Option<Vec<String>>,
     pub allowed_hosts: Option<Vec<String>>,
     pub allowed_paths: Option<Vec<String>>,
     pub env_vars: Option<HashMap<String, String>>,
