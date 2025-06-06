@@ -36,6 +36,10 @@ resource "google_secret_manager_secret_version" "hyper-mcp-config-version" {
     {
       "name": "qr-code",
       "path": "oci://ghcr.io/tuananh/qrcode-plugin:latest"
+    },
+    {
+      "name": "meme-generator",
+      "path": "oci://ghcr.io/tuananh/meme-generator-plugin:latest"
     }
   ]
 }
@@ -57,8 +61,14 @@ resource "google_cloud_run_service" "my-app" {
     spec {
       service_account_name = google_service_account.my-app.email
       containers {
-        image = "tuananhorg/hyper-mcp:latest"
-        args  = ["--transport", "sse", "--bind-address", "0.0.0.0:3001", "--config-file", "/app/config.json"]
+        image = "tuananh/hyper-mcp:nightly"
+        args  = ["--transport", "streamable-http", "--bind-address", "0.0.0.0:3001", "--config-file", "/app/config.json"]
+        resources {
+          limits = {
+            memory = "1Gi"
+            cpu    = "1"
+          }
+        }
         env {
           name  = "NAME"
           value = "fooooo"
