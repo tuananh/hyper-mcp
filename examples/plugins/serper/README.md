@@ -16,7 +16,7 @@ Call with:
       "name": "serper",
       "path": "oci://ghcr.io/tuananh/serper-plugin:latest",
       "runtime_config": {
-        "env_var": {
+        "env_vars": {
           "SERPER_API_KEY": "<your-serper-api-key>"
         },
         "allowed_hosts": ["google.serper.dev"] 
