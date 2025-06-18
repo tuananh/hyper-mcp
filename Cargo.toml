@@ -31,7 +31,7 @@ log = "=0.4.27"
 sigstore = { version = "=0.12.1", features = ["cosign", "verify", "bundle"] }
 tracing = "=0.1.41"
 tracing-subscriber = { version = "=0.3.19", features = ["env-filter"] }
-rmcp = { git = "https://github.com/modelcontextprotocol/rust-sdk", rev = "db03f63e76b5b32f65d34a1bd08ae56dab595f60", features = ["server", "transport-io", "transport-sse-server", "transport-streamable-http-server"] }
+rmcp = { git = "https://github.com/modelcontextprotocol/rust-sdk", rev = "4c34b64b7f8dcabf94d52a9c6518c6b49c1f0451", features = ["server", "transport-io", "transport-sse-server", "transport-streamable-http-server"] }
 serde_yaml = "=0.9.34"
 toml = "=0.8.23"
 bytesize = "=2.0.1"
