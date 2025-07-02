@@ -13,29 +13,29 @@ homepage = "https://github.com/tuananh/hyper-mcp"
 documentation = "https://github.com/tuananh/hyper-mcp"
 
 [dependencies]
-tokio = { version = "=1.45.1", features = ["full"] }
-serde = { version = "=1.0.219", features = ["derive"] }
-serde_json = "=1.0.140"
-reqwest = { version = "=0.12.21", features = ["json"] }
-anyhow = "=1.0.98"
-extism = "=1.11.1"
-sha2 = "=0.10.9"
-hex = "=0.4.3"
-oci-client = "=0.15.0"
-tar = "=0.4.44"
-flate2 = "=1.1.2"
-clap = { version = "=4.5.40", features = ["derive", "env"] }
-dirs = "=6.0.0"
-docker_credential = "=1.3.2"
-log = "=0.4.27"
-sigstore = { version = "=0.12.1", features = ["cosign", "verify", "bundle"] }
-tracing = "=0.1.41"
-tracing-subscriber = { version = "=0.3.19", features = ["env-filter"] }
-rmcp = { git = "https://github.com/modelcontextprotocol/rust-sdk", rev = "e6effb327883d0a8a91f5efbb527194747eee57b", features = ["server", "transport-io", "transport-sse-server", "transport-streamable-http-server"] }
-serde_yaml = "=0.9.34"
-toml = "=0.8.23"
-bytesize = "=2.0.1"
-axum = "=0.8.4"
+tokio = { version = "1.45.1", features = ["full"] }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+reqwest = { version = "0.12.21", features = ["json"] }
+anyhow = "1.0.98"
+extism = "1.11.1"
+sha2 = "0.10.9"
+hex = "0.4.3"
+oci-client = "0.15.0"
+tar = "0.4.44"
+flate2 = "1.1.2"
+clap = { version = "4.5.40", features = ["derive", "env"] }
+dirs = "6.0.0"
+docker_credential = "1.3.2"
+log = "0.4.27"
+sigstore = { version = "0.12.1", features = ["cosign", "verify", "bundle"] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+rmcp = { git = "https://github.com/modelcontextprotocol/rust-sdk", rev = "9ca20c69b27e531a5eadfd4b5654592ab93e2b11", features = ["server", "transport-io", "transport-sse-server", "transport-streamable-http-server"] }
+serde_yaml = "0.9.34"
+toml = "0.8.23"
+bytesize = "2.0.1"
+axum = "0.8.4"
 
 [[bin]]
 name = "hyper-mcp"
