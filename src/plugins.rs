@@ -200,15 +200,72 @@ impl ServerHandler for PluginService {
         let tool_cache = self.tool_plugin_map.read().await;
 
         let tool_name = request.name.clone();
+        let tool_name_str = tool_name.to_string();
+
+        // Find the plugin name and strip the prefix if needed
+        let mut original_name = tool_name_str.clone();
+        let mut plugin_name_for_tool = None;
+
+        // First try to find the tool directly in the cache
+        if let Some(plugin_name) = tool_cache.get(&tool_name_str) {
+            plugin_name_for_tool = Some(plugin_name.clone());
+
+            // Check if this tool has a prefix that needs to be stripped
+            for plugin_cfg in &self.config.plugins {
+                if let Some(rt_config) = &plugin_cfg.runtime_config {
+                    if let Some(tool_name_prefix) = &rt_config.tool_name_prefix {
+                        if tool_name_str.starts_with(tool_name_prefix) {
+                            // Strip the prefix to get the original tool name
+                            original_name = tool_name_str[tool_name_prefix.len()..].to_string();
+                            log::info!(
+                                "Found tool with prefix, stripping for internal call: {} -> {}",
+                                tool_name_str,
+                                original_name
+                            );
+                            break;
+                        }
+                    }
+                }
+            }
+        } else {
+            // If not found directly, check if it has a prefix that needs to be stripped
+            for plugin_cfg in &self.config.plugins {
+                if let Some(rt_config) = &plugin_cfg.runtime_config {
+                    if let Some(tool_name_prefix) = &rt_config.tool_name_prefix {
+                        if tool_name_str.starts_with(tool_name_prefix) {
+                            // Strip the prefix to get the original tool name
+                            original_name = tool_name_str[tool_name_prefix.len()..].to_string();
+                            log::info!(
+                                "Stripping prefix from tool: {} -> {}",
+                                tool_name_str,
+                                original_name
+                            );
+
+                            // Check if the original tool name is in the cache
+                            if let Some(plugin_name) = tool_cache.get(&original_name) {
+                                plugin_name_for_tool = Some(plugin_name.clone());
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Create a modified request with the original tool name
+        let mut modified_request = request.clone();
+        // Convert the String to Cow<'static, str> using into()
+        modified_request.name = std::borrow::Cow::Owned(original_name);
+
         let call_payload = json!({
-            "params": request,
+            "params": modified_request,
         });
         let json_string =
             serde_json::to_string(&call_payload).expect("Failed to serialize request");
 
         // Check if the tool exists in the cache
-        if let Some(plugin_name) = tool_cache.get(&tool_name.to_string()) {
-            if let Some(plugin_arc) = plugins.get(plugin_name) {
+        if let Some(plugin_name) = plugin_name_for_tool {
+            if let Some(plugin_arc) = plugins.get(&plugin_name) {
                 let plugin_clone = Arc::clone(plugin_arc);
                 let plugin_name_clone = plugin_name.clone();
 
@@ -277,7 +334,7 @@ impl ServerHandler for PluginService {
                                 .as_ref()
                                 .and_then(|rc| rc.skip_tools.clone())
                                 .unwrap_or_default();
-                            for tool in parsed.tools {
+                            for mut tool in parsed.tools {
                                 if skip_tools.iter().any(|s| s == tool.name.as_ref() as &str) {
                                     log::info!(
                                         "Skipping tool {} as requested in skip_tools",
@@ -285,6 +342,29 @@ impl ServerHandler for PluginService {
                                     );
                                     continue;
                                 }
+                                // If tool_name_prefix is set, append it to the tool name
+                                let original_name = tool.name.to_string();
+                                if let Some(runtime_cfg) = &plugin_cfg.runtime_config {
+                                    if let Some(tool_name_prefix) = &runtime_cfg.tool_name_prefix {
+                                        let prefixed_name =
+                                            format!("{}{}", tool_name_prefix, original_name);
+                                        log::info!(
+                                            "Adding prefix to tool: {} -> {}",
+                                            original_name,
+                                            prefixed_name
+                                        );
+
+                                        // Store both the original and prefixed tool names in the cache
+                                        // This ensures we can find the tool by either name
+                                        tool_cache
+                                            .insert(original_name.clone(), plugin_cfg.name.clone());
+
+                                        // Update the tool name with the prefix
+                                        tool.name = std::borrow::Cow::Owned(prefixed_name);
+                                    }
+                                }
+
+                                // Store the tool name (which might be prefixed now) -> plugin mapping
                                 tool_cache.insert(tool.name.to_string(), plugin_cfg.name.clone());
                                 payload.tools.push(tool);
                             }

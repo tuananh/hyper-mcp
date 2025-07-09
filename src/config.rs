@@ -23,6 +23,7 @@ pub struct RuntimeConfig {
     pub allowed_paths: Option<Vec<String>>,
     pub env_vars: Option<HashMap<String, String>>,
     pub memory_limit: Option<String>,
+    pub tool_name_prefix: Option<String>,
 }
 
 pub async fn load_config(path: &Path) -> Result<Config> {
