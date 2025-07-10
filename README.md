@@ -26,10 +26,12 @@ hyper-mcp makes it easy to add AI capabilities to your applications. It works wi
 - Write plugins in any language that compiles to WebAssembly
 - Distribute plugins via standard OCI registries (like Docker Hub)
 - Built on [Extism](https://github.com/extism/extism) for rock-solid plugin support
+- Sanboxing with WASM: ability to limit network, filesystem, memory access
 - Lightweight enough for resource-constrained environments
 - Support all 3 protocols in the spec: `stdio`, `sse` and `streamble-http`.
 - Deploy anywhere: serverless, edge, mobile, IoT devices
 - Cross-platform compatibility out of the box
+- Support tool name prefix to prevent tool names collision
 
 ## Security
 
@@ -75,7 +77,8 @@ Built with security-first mindset:
       "path": "oci://ghcr.io/tuananh/fetch-plugin:latest",
       "runtime_config": {
         "allowed_hosts": ["*"],
-        "memory_limit": "100 MB"
+        "memory_limit": "100 MB",
+        "tool_name_prefix": "foo_"
       }
     }
   ]
