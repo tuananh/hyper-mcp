@@ -5,7 +5,7 @@ use anyhow::Result;
 use bytesize::ByteSize;
 use extism::{Manifest, Plugin, Wasm};
 use rmcp::service::{NotificationContext, RequestContext, RoleServer};
-use rmcp::{Error as McpError, ServerHandler, model::*};
+use rmcp::{ErrorData as McpError, ServerHandler, model::*};
 use std::str::FromStr;
 
 use serde_json::json;
