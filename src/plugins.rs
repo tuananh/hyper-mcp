@@ -71,7 +71,7 @@ impl PluginService {
                     .pull_and_extract(image_reference, target_file_path, local_output_path)
                     .await
                 {
-                    log::error!("Error pulling oci plugin: {}", e);
+                    log::error!("Error pulling oci plugin: {e}");
                     return Err(anyhow::anyhow!("Failed to pull OCI plugin: {}", e));
                 }
                 log::info!(
@@ -85,7 +85,7 @@ impl PluginService {
             };
             let mut manifest = Manifest::new([Wasm::data(wasm_content)]);
             if let Some(runtime_cfg) = &plugin_cfg.runtime_config {
-                log::info!("runtime_cfg: {:?}", runtime_cfg);
+                log::info!("runtime_cfg: {runtime_cfg:?}");
                 if let Some(hosts) = &runtime_cfg.allowed_hosts {
                     for host in hosts {
                         manifest = manifest.with_allowed_host(host);
@@ -114,9 +114,7 @@ impl PluginService {
                         }
                         Err(e) => {
                             log::error!(
-                                "Failed to parse memory_limit '{}': {}. Using default memory limit.",
-                                memory_limit,
-                                e
+                                "Failed to parse memory_limit '{memory_limit}': {e}. Using default memory limit."
                             );
                         }
                     }
@@ -171,7 +169,7 @@ impl PluginService {
                 .write()
                 .await
                 .insert(plugin_name.clone(), plugin);
-            log::info!("Loaded plugin {}", plugin_name);
+            log::info!("Loaded plugin {plugin_name}");
         }
         Ok(())
     }
@@ -218,9 +216,7 @@ impl ServerHandler for PluginService {
                             // Strip the prefix to get the original tool name
                             original_name = tool_name_str[tool_name_prefix.len()..].to_string();
                             log::info!(
-                                "Found tool with prefix, stripping for internal call: {} -> {}",
-                                tool_name_str,
-                                original_name
+                                "Found tool with prefix, stripping for internal call: {tool_name_str} -> {original_name}"
                             );
                             break;
                         }
@@ -236,9 +232,7 @@ impl ServerHandler for PluginService {
                             // Strip the prefix to get the original tool name
                             original_name = tool_name_str[tool_name_prefix.len()..].to_string();
                             log::info!(
-                                "Stripping prefix from tool: {} -> {}",
-                                tool_name_str,
-                                original_name
+                                "Stripping prefix from tool: {tool_name_str} -> {original_name}"
                             );
 
                             // Check if the original tool name is in the cache
@@ -279,18 +273,17 @@ impl ServerHandler for PluginService {
                     Ok(Ok(result)) => match serde_json::from_str::<CallToolResult>(&result) {
                         Ok(parsed) => Ok(parsed),
                         Err(e) => Err(McpError::internal_error(
-                            format!("Failed to deserialize data: {}", e),
+                            format!("Failed to deserialize data: {e}"),
                             None,
                         )),
                     },
                     Ok(Err(e)) => Err(McpError::internal_error(
-                        format!("Failed to execute plugin {}: {}", plugin_name_clone, e),
+                        format!("Failed to execute plugin {plugin_name_clone}: {e}"),
                         None,
                     )),
                     Err(e) => Err(McpError::internal_error(
                         format!(
-                            "Failed to spawn blocking task for plugin {}: {}",
-                            plugin_name_clone, e
+                            "Failed to spawn blocking task for plugin {plugin_name_clone}: {e}"
                         ),
                         None,
                     )),
@@ -347,11 +340,9 @@ impl ServerHandler for PluginService {
                                 if let Some(runtime_cfg) = &plugin_cfg.runtime_config {
                                     if let Some(tool_name_prefix) = &runtime_cfg.tool_name_prefix {
                                         let prefixed_name =
-                                            format!("{}{}", tool_name_prefix, original_name);
+                                            format!("{tool_name_prefix}{original_name}");
                                         log::info!(
-                                            "Adding prefix to tool: {} -> {}",
-                                            original_name,
-                                            prefixed_name
+                                            "Adding prefix to tool: {original_name} -> {prefixed_name}"
                                         );
 
                                         // Store both the original and prefixed tool names in the cache
@@ -371,10 +362,10 @@ impl ServerHandler for PluginService {
                         }
                     }
                     Ok(Err(e)) => {
-                        log::error!("tool {} describe() error: {}", plugin_name, e);
+                        log::error!("tool {plugin_name} describe() error: {e}");
                     }
                     Err(e) => {
-                        log::error!("tool {} spawn_blocking error: {}", plugin_name, e);
+                        log::error!("tool {plugin_name} spawn_blocking error: {e}");
                     }
                 }
             }
