@@ -61,9 +61,7 @@ fn build_auth(reference: &Reference) -> RegistryAuth {
         Err(CredentialRetrievalError::ConfigNotFound) => RegistryAuth::Anonymous,
         Err(CredentialRetrievalError::NoCredentialConfigured) => RegistryAuth::Anonymous,
         Err(e) => {
-            log::info!(
-                "Error retrieving docker credentials: {e}. Using anonymous auth"
-            );
+            log::info!("Error retrieving docker credentials: {e}. Using anonymous auth");
             RegistryAuth::Anonymous
         }
         Ok(DockerCredential::UsernamePassword(username, password)) => {
@@ -131,9 +129,7 @@ async fn setup_trust_repository(cli: &Cli) -> Result<Box<dyn TrustRoot>, anyhow:
                 Err(e) => log::warn!("Failed to read Fulcio certificates file: {e}"),
             }
         } else {
-            log::warn!(
-                "Fulcio certificates file not found: {fulcio_certs_path:?}"
-            );
+            log::warn!("Fulcio certificates file not found: {fulcio_certs_path:?}");
         }
     }
 
