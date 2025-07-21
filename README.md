@@ -1,16 +1,18 @@
 <div align="center">
+  <picture>
+    <img alt="hyper-mcp logo" src="./assets/logo.png" width="50%">
+  </picture>
+</div>
+
+<div align="center">
 
 [![Rust](https://img.shields.io/badge/rust-%23000000.svg?logo=rust&logoColor=white)](https://crates.io/crates/hyper-mcp)
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue)](#license)
 [![Issues - hyper-mcp](https://img.shields.io/github/issues/tuananh/hyper-mcp)](https://github.com/tuananh/hyper-mcp/issues)
 ![GitHub Release](https://img.shields.io/github/v/release/tuananh/hyper-mcp)
 
-</div>
+<a href="https://trendshift.io/repositories/13451" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13451" alt="tuananh%2Fhyper-mcp | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
-<div align="center">
-  <picture>
-    <img alt="hyper-mcp logo" src="./assets/logo.png" width="50%">
-  </picture>
 </div>
 
 # hyper-mcp
