@@ -1,6 +1,6 @@
 use crate::Cli;
-use crate::config::Config;
-use crate::oci::OciDownloader;
+use crate::config::{Config, load_config};
+use crate::oci::pull_and_extract_oci_image;
 use anyhow::Result;
 use bytesize::ByteSize;
 use extism::{Manifest, Plugin, Wasm};
@@ -8,81 +8,138 @@ use rmcp::service::{NotificationContext, RequestContext, RoleServer};
 use rmcp::{ErrorData as McpError, ServerHandler, model::*};
 use std::str::FromStr;
 
+use aws_sdk_s3::Client as S3Client;
+use oci_client::Client as OciClient;
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use tokio::sync::RwLock;
+use tokio::sync::{OnceCell, RwLock};
 
 #[derive(Clone)]
 pub struct PluginService {
     config: Config,
     plugins: Arc<RwLock<HashMap<String, Arc<Mutex<Plugin>>>>>,
     tool_plugin_map: Arc<RwLock<HashMap<String, String>>>,
-    oci_downloader: Arc<OciDownloader>,
 }
 
 impl PluginService {
-    pub async fn new(config: Config, cli: &Cli) -> Result<Self> {
-        // Create OCI downloader with CLI object
-        let oci_downloader = Arc::new(OciDownloader::new(cli));
+    pub async fn new(cli: &Cli) -> Result<Self> {
+        // Get default config path in the user's config directory
+        let default_config_path = dirs::config_dir()
+            .map(|mut path| {
+                path.push("hyper-mcp");
+                path.push("config.json");
+                path
+            })
+            .unwrap();
+
+        let config_path = cli.config_file.as_ref().unwrap_or(&default_config_path);
+        tracing::info!("Using config file at {}", config_path.display());
 
         let service = Self {
-            config,
+            config: load_config(config_path).await?,
             plugins: Arc::new(RwLock::new(HashMap::new())),
             tool_plugin_map: Arc::new(RwLock::new(HashMap::new())),
-            oci_downloader,
         };
 
-        service.load_plugins().await?;
+        service.load_plugins(cli).await?;
         Ok(service)
     }
 
-    async fn load_plugins(&self) -> Result<()> {
+    async fn load_plugins(&self, cli: &Cli) -> Result<()> {
+        let oci_client: OnceCell<OciClient> = OnceCell::new();
+        let s3_client: OnceCell<S3Client> = OnceCell::new();
+
         for plugin_cfg in &self.config.plugins {
-            let wasm_content = if plugin_cfg.path.starts_with("http") {
-                reqwest::get(&plugin_cfg.path)
+            let wasm_content = match plugin_cfg.url.scheme() {
+                "file" => tokio::fs::read(plugin_cfg.url.path()).await?,
+                "http" | "https" => reqwest::get(plugin_cfg.url.as_str())
                     .await?
                     .bytes()
                     .await?
-                    .to_vec()
-            } else if plugin_cfg.path.starts_with("oci") {
-                // ref should be like oci://tuananh/qr-code
-                let image_reference = plugin_cfg.path.strip_prefix("oci://").unwrap();
-                let target_file_path = "/plugin.wasm";
-                let mut hasher = Sha256::new();
-                hasher.update(image_reference);
-                let hash = hasher.finalize();
-                let short_hash = &hex::encode(hash)[..7];
-                let cache_dir = dirs::cache_dir()
-                    .map(|mut path| {
-                        path.push("hyper-mcp");
-                        path
-                    })
-                    .unwrap();
-                std::fs::create_dir_all(&cache_dir)?;
+                    .to_vec(),
+                "oci" => {
+                    let image_reference = plugin_cfg.url.as_str().strip_prefix("oci://").unwrap();
+                    let target_file_path = "/plugin.wasm";
+                    let mut hasher = Sha256::new();
+                    hasher.update(image_reference);
+                    let hash = hasher.finalize();
+                    let short_hash = &hex::encode(hash)[..7];
+                    let cache_dir = dirs::cache_dir()
+                        .map(|mut path| {
+                            path.push("hyper-mcp");
+                            path
+                        })
+                        .unwrap();
+                    std::fs::create_dir_all(&cache_dir)?;
 
-                let local_output_path =
-                    cache_dir.join(format!("{}-{}.wasm", plugin_cfg.name, short_hash));
-                let local_output_path = local_output_path.to_str().unwrap();
+                    let local_output_path =
+                        cache_dir.join(format!("{}-{}.wasm", plugin_cfg.name, short_hash));
+                    let local_output_path = local_output_path.to_str().unwrap();
 
-                if let Err(e) = self
-                    .oci_downloader
-                    .pull_and_extract(image_reference, target_file_path, local_output_path)
+                    if let Err(e) = pull_and_extract_oci_image(
+                        cli,
+                        oci_client
+                            .get_or_init(|| async {
+                                OciClient::new(oci_client::client::ClientConfig::default())
+                            })
+                            .await,
+                        image_reference,
+                        target_file_path,
+                        local_output_path,
+                    )
                     .await
-                {
-                    log::error!("Error pulling oci plugin: {e}");
-                    return Err(anyhow::anyhow!("Failed to pull OCI plugin: {}", e));
+                    {
+                        log::error!("Error pulling oci plugin: {e}");
+                        return Err(anyhow::anyhow!("Failed to pull OCI plugin: {}", e));
+                    }
+                    log::info!(
+                        "cache plugin `{}` to : {}",
+                        plugin_cfg.name,
+                        local_output_path
+                    );
+                    tokio::fs::read(local_output_path).await?
                 }
-                log::info!(
-                    "cache plugin `{}` to : {}",
-                    plugin_cfg.name,
-                    local_output_path
-                );
-                tokio::fs::read(local_output_path).await?
-            } else {
-                tokio::fs::read(&plugin_cfg.path).await?
+                "s3" => {
+                    let bucket = plugin_cfg.url.host_str().ok_or_else(|| {
+                        anyhow::anyhow!("S3 URL must have a valid bucket name in the host")
+                    })?;
+                    let key = plugin_cfg.url.path().trim_start_matches('/');
+                    match s3_client
+                        .get_or_init(|| async { S3Client::new(&aws_config::load_from_env().await) })
+                        .await
+                        .get_object()
+                        .bucket(bucket)
+                        .key(key)
+                        .send()
+                        .await
+                    {
+                        Ok(response) => match response.body.collect().await {
+                            Ok(body) => body.to_vec(),
+                            Err(e) => {
+                                log::error!("Failed to collect S3 object body: {e}");
+                                return Err(anyhow::anyhow!(
+                                    "Failed to collect S3 object body: {}",
+                                    e
+                                ));
+                            }
+                        },
+                        Err(e) => {
+                            log::error!("Failed to get object from S3: {e}");
+                            return Err(anyhow::anyhow!("Failed to get object from S3: {}", e));
+                        }
+                    }
+                }
+                unsupported => {
+                    log::error!("Unsupported plugin URL scheme: {unsupported}");
+                    return Err(anyhow::anyhow!(
+                        "Unsupported plugin URL scheme: {}",
+                        unsupported
+                    ));
+                }
             };
+
             let mut manifest = Manifest::new([Wasm::data(wasm_content)]);
             if let Some(runtime_cfg) = &plugin_cfg.runtime_config {
                 log::info!("runtime_cfg: {runtime_cfg:?}");
