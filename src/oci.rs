@@ -86,7 +86,9 @@ async fn setup_trust_repository(cli: &Cli) -> Result<Box<dyn TrustRoot>, anyhow:
             Err(e) => {
                 log::error!("Failed to initialize TUF trust repository: {e}");
                 if !cli.insecure_skip_signature {
-                    return Err(anyhow!("Failed to initialize TUF trust repository and signature verification is required"));
+                    return Err(anyhow!(
+                        "Failed to initialize TUF trust repository and signature verification is required"
+                    ));
                 }
                 log::info!("Falling back to manual trust repository");
             }
