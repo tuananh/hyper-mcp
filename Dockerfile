@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM rust:1.86 AS builder
+FROM --platform=$BUILDPLATFORM rust:1.89 AS builder
 WORKDIR /app
 RUN cargo install cargo-auditable
 
