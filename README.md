@@ -54,7 +54,7 @@ Built with security-first mindset:
 
 ```json
 {
-  "plugins": {}
+  "plugins": {
     "time": {
       "url": "oci://ghcr.io/tuananh/time-plugin:latest"
     },
