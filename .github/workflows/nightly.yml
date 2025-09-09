@@ -141,6 +141,10 @@ jobs:
 
       - name: Build
         run: cargo auditable build --target ${{ matrix.target }} --release
+ 
+      - name: Install zip (Windows only)
+        if: runner.os == 'Windows'
+        run: choco install zip -y
 
       - name: Create archives and checksums
         shell: bash
