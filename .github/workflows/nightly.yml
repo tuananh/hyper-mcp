@@ -105,12 +105,19 @@ jobs:
           - os: ubuntu-24.04
             arch: x86_64
             target: x86_64-unknown-linux-gnu
+            ext: ""
           - os: ubuntu-24.04-arm
             arch: aarch64
             target: aarch64-unknown-linux-gnu
+            ext: ""
           - os: macos-latest
             arch: aarch64
             target: aarch64-apple-darwin
+            ext: ""
+          - os: windows-latest
+            arch: x86_64
+            target: x86_64-pc-windows-msvc
+            ext: ".exe"
 
     runs-on: ${{ matrix.os }}
     permissions:
@@ -135,24 +142,34 @@ jobs:
       - name: Build
         run: cargo auditable build --target ${{ matrix.target }} --release
 
-      # TODO: figure out how to do cross build
       - name: Create archives and checksums
         run: |
-          # Create directories for archives
           mkdir -p dist/${{ matrix.target }}
-          
-          cp target/${{ matrix.target }}/release/hyper-mcp dist/${{ matrix.target }}/
-          cd dist/${{ matrix.target }} && tar -czf ../hyper-mcp-${{ matrix.target }}.tar.gz hyper-mcp
+
+          bin_name="hyper-mcp${{ matrix.ext }}"
+          cp target/${{ matrix.target }}/release/$bin_name dist/${{ matrix.target }}/
+
+          cd dist/${{ matrix.target }}
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            zip ../hyper-mcp-${{ matrix.target }}.zip $bin_name
+          else
+            tar -czf ../hyper-mcp-${{ matrix.target }}.tar.gz $bin_name
+          fi
           cd ..
-          
+
           {
-            echo "hyper-mcp-${{ matrix.target }}.tar.gz:"
-            if command -v sha256sum >/dev/null 2>&1; then
-              sha256sum hyper-mcp-${{ matrix.target }}.tar.gz
+            if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+              file="hyper-mcp-${{ matrix.target }}.zip"
             else
-              shasum -a 256 hyper-mcp-${{ matrix.target }}.tar.gz
+              file="hyper-mcp-${{ matrix.target }}.tar.gz"
             fi
-          } > checksums.txt
+            echo "$file:"
+            if command -v sha256sum >/dev/null 2>&1; then
+              sha256sum $file
+            else
+              shasum -a 256 $file
+            fi
+          } > checksums-${{ matrix.target }}.txt
 
       - name: Create new nightly release
         id: create_release
@@ -164,7 +181,8 @@ jobs:
           prerelease: true
           files: |
             dist/hyper-mcp-${{ matrix.target }}.tar.gz
-            dist/checksums.txt
+            dist/hyper-mcp-${{ matrix.target }}.zip
+            dist/checksums-${{ matrix.target }}.txt
           body: |
             Nightly build from `main` branch.
             
