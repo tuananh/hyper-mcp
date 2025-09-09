@@ -143,6 +143,7 @@ jobs:
         run: cargo auditable build --target ${{ matrix.target }} --release
 
       - name: Create archives and checksums
+        shell: bash
         run: |
           mkdir -p dist/${{ matrix.target }}
 
