@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use once_cell::sync::Lazy;
-use regex::Regex;
+use regex::{Regex, RegexSet};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, convert::TryFrom, fmt, path::Path, str::FromStr};
 use url::Url;
@@ -135,10 +135,58 @@ pub struct PluginConfig {
     pub runtime_config: Option<RuntimeConfig>,
 }
 
+mod skip_tools_serde {
+    use super::*;
+    use serde::{Deserializer, Serializer};
+
+    pub fn serialize<S>(set: &Option<RegexSet>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match set {
+            Some(set) => serializer.serialize_some(set.patterns()),
+            None => serializer.serialize_none(),
+        }
+    }
+
+    fn anchor_pattern(pattern: &String) -> String {
+        // Anchor the pattern to match the entire string
+        // only if it is not already anchored
+        if pattern.starts_with("^")
+            || pattern.starts_with("\\A")
+            || pattern.ends_with("$")
+            || pattern.ends_with("\\z")
+        {
+            pattern.clone()
+        } else {
+            format!("^{}$", pattern)
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<RegexSet>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let patterns: Option<Vec<String>> = Option::deserialize(deserializer)?;
+        match patterns {
+            Some(patterns) => RegexSet::new(
+                patterns
+                    .into_iter()
+                    .map(|p| anchor_pattern(&p))
+                    .collect::<Vec<_>>(),
+            )
+            .map(Some)
+            .map_err(serde::de::Error::custom),
+            None => Ok(None),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct RuntimeConfig {
     // List of tool names to skip loading at runtime.
-    pub skip_tools: Option<Vec<String>>,
+    #[serde(with = "skip_tools_serde", default)]
+    pub skip_tools: Option<RegexSet>,
     pub allowed_hosts: Option<Vec<String>>,
     pub allowed_paths: Option<Vec<String>>,
     pub env_vars: Option<HashMap<String, String>>,
@@ -2165,5 +2213,414 @@ plugins:
             }
             _ => panic!("Expected Token auth config"),
         }
+    }
+
+    // Tests for skip_tools Option<RegexSet> functionality
+    #[test]
+    fn test_skip_tools_none() {
+        let runtime_config = RuntimeConfig {
+            skip_tools: None,
+            allowed_hosts: None,
+            allowed_paths: None,
+            env_vars: None,
+            memory_limit: None,
+        };
+
+        // Test serialization
+        let json = serde_json::to_string(&runtime_config).unwrap();
+        assert!(json.contains("\"skip_tools\":null"));
+
+        // Test deserialization
+        let deserialized: RuntimeConfig = serde_json::from_str(&json).unwrap();
+        assert!(deserialized.skip_tools.is_none());
+    }
+
+    #[test]
+    fn test_skip_tools_some_basic() {
+        let json = r#"{
+            "skip_tools": ["tool1", "tool2", "tool3"]
+        }"#;
+
+        let runtime_config: RuntimeConfig = serde_json::from_str(json).unwrap();
+        let skip_tools = runtime_config.skip_tools.as_ref().unwrap();
+
+        assert_eq!(skip_tools.len(), 3);
+        assert!(skip_tools.is_match("tool1"));
+        assert!(skip_tools.is_match("tool2"));
+        assert!(skip_tools.is_match("tool3"));
+        assert!(!skip_tools.is_match("tool4"));
+        assert!(!skip_tools.is_match("tool1_extended"));
+    }
+
+    #[test]
+    fn test_skip_tools_regex_patterns() {
+        let json = r#"{
+            "skip_tools": ["tool.*", "debug_.*", "test_[0-9]+"]
+        }"#;
+
+        let runtime_config: RuntimeConfig = serde_json::from_str(json).unwrap();
+        let skip_tools = runtime_config.skip_tools.as_ref().unwrap();
+
+        // Test wildcard patterns
+        assert!(skip_tools.is_match("tool1"));
+        assert!(skip_tools.is_match("tool_anything"));
+        assert!(skip_tools.is_match("toolbox"));
+
+        // Test prefix patterns
+        assert!(skip_tools.is_match("debug_info"));
+        assert!(skip_tools.is_match("debug_error"));
+
+        // Test numbered patterns
+        assert!(skip_tools.is_match("test_1"));
+        assert!(skip_tools.is_match("test_99"));
+
+        // Test non-matches
+        assert!(!skip_tools.is_match("my_tool"));
+        assert!(!skip_tools.is_match("debug"));
+        assert!(!skip_tools.is_match("test_abc"));
+        // "tool" should match "tool.*" pattern since it becomes "^tool.*$"
+        assert!(skip_tools.is_match("tool"));
+    }
+
+    #[test]
+    fn test_skip_tools_anchoring_behavior() {
+        let json = r#"{
+            "skip_tools": ["tool", "^prefix_.*", ".*_suffix$", "^exact_match$"]
+        }"#;
+
+        let runtime_config: RuntimeConfig = serde_json::from_str(json).unwrap();
+        let skip_tools = runtime_config.skip_tools.as_ref().unwrap();
+
+        // "tool" should be auto-anchored to "^tool$"
+        assert!(skip_tools.is_match("tool"));
+        assert!(!skip_tools.is_match("tool_extended"));
+        assert!(!skip_tools.is_match("my_tool"));
+
+        // "^prefix_.*" should match anything starting with "prefix_"
+        assert!(skip_tools.is_match("prefix_anything"));
+        assert!(skip_tools.is_match("prefix_"));
+        assert!(!skip_tools.is_match("my_prefix_tool"));
+
+        // ".*_suffix$" should match anything ending with "_suffix"
+        assert!(skip_tools.is_match("any_suffix"));
+        assert!(skip_tools.is_match("_suffix"));
+        assert!(!skip_tools.is_match("suffix_extended"));
+
+        // "^exact_match$" should only match exactly "exact_match"
+        assert!(skip_tools.is_match("exact_match"));
+        assert!(!skip_tools.is_match("exact_match_extended"));
+        // "prefix_exact_match" matches "^prefix_.*" pattern, not "^exact_match$"
+        assert!(skip_tools.is_match("prefix_exact_match"));
+    }
+
+    #[test]
+    fn test_skip_tools_serialization_roundtrip() {
+        let original_patterns = vec![
+            "tool1".to_string(),
+            "tool.*".to_string(),
+            "debug_.*".to_string(),
+        ];
+        let regex_set = RegexSet::new(&original_patterns).unwrap();
+
+        let runtime_config = RuntimeConfig {
+            skip_tools: Some(regex_set),
+            allowed_hosts: None,
+            allowed_paths: None,
+            env_vars: None,
+            memory_limit: None,
+        };
+
+        // Serialize
+        let json = serde_json::to_string(&runtime_config).unwrap();
+
+        // Deserialize
+        let deserialized: RuntimeConfig = serde_json::from_str(&json).unwrap();
+        let skip_tools = deserialized.skip_tools.as_ref().unwrap();
+
+        // Verify functionality is preserved
+        assert!(skip_tools.is_match("tool1"));
+        assert!(skip_tools.is_match("tool_anything"));
+        assert!(skip_tools.is_match("debug_info"));
+        assert!(!skip_tools.is_match("other_tool"));
+    }
+
+    #[test]
+    fn test_skip_tools_yaml_deserialization() {
+        let yaml = r#"
+skip_tools:
+  - "tool1"
+  - "tool.*"
+  - "debug_.*"
+allowed_hosts:
+  - "example.com"
+"#;
+
+        let runtime_config: RuntimeConfig = serde_yaml::from_str(yaml).unwrap();
+        let skip_tools = runtime_config.skip_tools.as_ref().unwrap();
+
+        assert!(skip_tools.is_match("tool1"));
+        assert!(skip_tools.is_match("tool_test"));
+        assert!(skip_tools.is_match("debug_info"));
+        assert!(!skip_tools.is_match("other"));
+    }
+
+    #[test]
+    fn test_skip_tools_invalid_regex() {
+        let json = r#"{
+            "skip_tools": ["valid_tool", "[unclosed_bracket", "another_valid"]
+        }"#;
+
+        let result: Result<RuntimeConfig, _> = serde_json::from_str(json);
+        assert!(result.is_err());
+
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("regex") || error_msg.contains("bracket"));
+    }
+
+    #[test]
+    fn test_skip_tools_empty_patterns() {
+        let json = r#"{
+            "skip_tools": []
+        }"#;
+
+        let runtime_config: RuntimeConfig = serde_json::from_str(json).unwrap();
+        let skip_tools = runtime_config.skip_tools.as_ref().unwrap();
+
+        assert_eq!(skip_tools.len(), 0);
+        assert!(!skip_tools.is_match("anything"));
+    }
+
+    #[test]
+    fn test_skip_tools_special_regex_characters() {
+        let json = r#"{
+            "skip_tools": ["tool\\.exe", "script\\?", "temp\\*file"]
+        }"#;
+
+        let runtime_config: RuntimeConfig = serde_json::from_str(json).unwrap();
+        let skip_tools = runtime_config.skip_tools.as_ref().unwrap();
+
+        // Test literal matching of special characters
+        assert!(skip_tools.is_match("tool.exe"));
+        assert!(skip_tools.is_match("script?"));
+        assert!(skip_tools.is_match("temp*file"));
+
+        // These should not match due to anchoring
+        assert!(!skip_tools.is_match("my_tool.exe"));
+        assert!(!skip_tools.is_match("script?.bat"));
+    }
+
+    #[test]
+    fn test_skip_tools_case_sensitivity() {
+        let json = r#"{
+            "skip_tools": ["Tool", "DEBUG.*"]
+        }"#;
+
+        let runtime_config: RuntimeConfig = serde_json::from_str(json).unwrap();
+        let skip_tools = runtime_config.skip_tools.as_ref().unwrap();
+
+        // RegexSet is case sensitive by default
+        assert!(skip_tools.is_match("Tool"));
+        assert!(!skip_tools.is_match("tool"));
+        assert!(!skip_tools.is_match("TOOL"));
+
+        assert!(skip_tools.is_match("DEBUG_info"));
+        assert!(!skip_tools.is_match("debug_info"));
+    }
+
+    #[test]
+    fn test_skip_tools_default_behavior() {
+        // Test that skip_tools defaults to None when not specified
+        let json = r#"{
+            "allowed_hosts": ["example.com"]
+        }"#;
+
+        let runtime_config: RuntimeConfig = serde_json::from_str(json).unwrap();
+        assert!(runtime_config.skip_tools.is_none());
+    }
+
+    #[test]
+    fn test_skip_tools_matching_functionality() {
+        let patterns = vec![
+            "exact".to_string(),
+            "prefix.*".to_string(),
+            ".*suffix".to_string(),
+        ];
+        let regex_set = RegexSet::new(
+            patterns
+                .iter()
+                .map(|p| format!("^{}$", p))
+                .collect::<Vec<_>>(),
+        )
+        .unwrap();
+
+        // Test exact match
+        assert!(regex_set.is_match("exact"));
+        assert!(!regex_set.is_match("exact_more"));
+
+        // Test prefix match
+        assert!(regex_set.is_match("prefix123"));
+        assert!(regex_set.is_match("prefixABC"));
+        assert!(!regex_set.is_match("not_prefix123"));
+
+        // Test suffix match
+        assert!(regex_set.is_match("anysuffix"));
+        assert!(regex_set.is_match("123suffix"));
+        assert!(!regex_set.is_match("suffix_more"));
+    }
+
+    #[test]
+    fn test_skip_tools_examples_integration() {
+        let rt = Runtime::new().unwrap();
+
+        // Load the skip_tools examples config
+        let path = Path::new("tests/fixtures/skip_tools_examples.yaml");
+        let config_result = rt.block_on(load_config(path));
+        assert!(
+            config_result.is_ok(),
+            "Failed to load skip_tools examples config"
+        );
+
+        let config = config_result.unwrap();
+        assert_eq!(
+            config.plugins.len(),
+            10,
+            "Expected 10 plugins in the config"
+        );
+
+        // Test exact_match_plugin
+        let exact_plugin = &config.plugins[&PluginName("exact_match_plugin".to_string())];
+        let exact_skip_tools = exact_plugin
+            .runtime_config
+            .as_ref()
+            .unwrap()
+            .skip_tools
+            .as_ref()
+            .unwrap();
+        assert!(exact_skip_tools.is_match("debug_tool"));
+        assert!(exact_skip_tools.is_match("test_runner"));
+        assert!(exact_skip_tools.is_match("deprecated_helper"));
+        assert!(!exact_skip_tools.is_match("other_tool"));
+        assert!(!exact_skip_tools.is_match("debug_tool_extended"));
+
+        // Test wildcard_plugin
+        let wildcard_plugin = &config.plugins[&PluginName("wildcard_plugin".to_string())];
+        let wildcard_skip_tools = wildcard_plugin
+            .runtime_config
+            .as_ref()
+            .unwrap()
+            .skip_tools
+            .as_ref()
+            .unwrap();
+        assert!(wildcard_skip_tools.is_match("temp_file"));
+        assert!(wildcard_skip_tools.is_match("temp_data"));
+        assert!(wildcard_skip_tools.is_match("file_backup"));
+        assert!(wildcard_skip_tools.is_match("data_backup"));
+        assert!(wildcard_skip_tools.is_match("debug"));
+        assert!(wildcard_skip_tools.is_match("debugger"));
+        assert!(!wildcard_skip_tools.is_match("backup_file"));
+        assert!(!wildcard_skip_tools.is_match("temp"));
+
+        // Test regex_plugin
+        let regex_plugin = &config.plugins[&PluginName("regex_plugin".to_string())];
+        let regex_skip_tools = regex_plugin
+            .runtime_config
+            .as_ref()
+            .unwrap()
+            .skip_tools
+            .as_ref()
+            .unwrap();
+        assert!(regex_skip_tools.is_match("tool_1"));
+        assert!(regex_skip_tools.is_match("tool_42"));
+        assert!(regex_skip_tools.is_match("test_unit"));
+        assert!(regex_skip_tools.is_match("test_integration"));
+        assert!(regex_skip_tools.is_match("data_helper"));
+        assert!(!regex_skip_tools.is_match("tool_abc"));
+        assert!(!regex_skip_tools.is_match("test_system"));
+        assert!(!regex_skip_tools.is_match("Data_helper"));
+
+        // Test anchored_plugin
+        let anchored_plugin = &config.plugins[&PluginName("anchored_plugin".to_string())];
+        let anchored_skip_tools = anchored_plugin
+            .runtime_config
+            .as_ref()
+            .unwrap()
+            .skip_tools
+            .as_ref()
+            .unwrap();
+        assert!(anchored_skip_tools.is_match("system_tool"));
+        assert!(anchored_skip_tools.is_match("data_internal"));
+        assert!(anchored_skip_tools.is_match("exact_only"));
+        assert!(!anchored_skip_tools.is_match("my_system_tool"));
+        assert!(!anchored_skip_tools.is_match("data_internal_ext"));
+        assert!(!anchored_skip_tools.is_match("exact_only_more"));
+
+        // Test case_sensitive_plugin
+        let case_plugin = &config.plugins[&PluginName("case_sensitive_plugin".to_string())];
+        let case_skip_tools = case_plugin
+            .runtime_config
+            .as_ref()
+            .unwrap()
+            .skip_tools
+            .as_ref()
+            .unwrap();
+        assert!(case_skip_tools.is_match("Tool"));
+        assert!(!case_skip_tools.is_match("tool"));
+        assert!(!case_skip_tools.is_match("TOOL"));
+        assert!(case_skip_tools.is_match("DEBUG_info"));
+        assert!(!case_skip_tools.is_match("debug_info"));
+        assert!(case_skip_tools.is_match("CamelCaseHelper"));
+        assert!(!case_skip_tools.is_match("camelCaseHelper"));
+
+        // Test special_chars_plugin
+        let special_plugin = &config.plugins[&PluginName("special_chars_plugin".to_string())];
+        let special_skip_tools = special_plugin
+            .runtime_config
+            .as_ref()
+            .unwrap()
+            .skip_tools
+            .as_ref()
+            .unwrap();
+        assert!(special_skip_tools.is_match("file.exe"));
+        assert!(special_skip_tools.is_match("script?"));
+        assert!(special_skip_tools.is_match("temp*data"));
+        assert!(special_skip_tools.is_match("path\\tool"));
+        assert!(!special_skip_tools.is_match("fileXexe"));
+        assert!(!special_skip_tools.is_match("script"));
+
+        // Test empty_skip_plugin
+        let empty_plugin = &config.plugins[&PluginName("empty_skip_plugin".to_string())];
+        let empty_skip_tools = empty_plugin
+            .runtime_config
+            .as_ref()
+            .unwrap()
+            .skip_tools
+            .as_ref()
+            .unwrap();
+        assert_eq!(empty_skip_tools.len(), 0);
+        assert!(!empty_skip_tools.is_match("anything"));
+
+        // Test no_skip_plugin
+        let no_skip_plugin = &config.plugins[&PluginName("no_skip_plugin".to_string())];
+        assert!(
+            no_skip_plugin
+                .runtime_config
+                .as_ref()
+                .unwrap()
+                .skip_tools
+                .is_none()
+        );
+
+        // Test full_config_plugin has all components
+        let full_plugin = &config.plugins[&PluginName("full_config_plugin".to_string())];
+        let full_runtime = full_plugin.runtime_config.as_ref().unwrap();
+        let full_skip_tools = full_runtime.skip_tools.as_ref().unwrap();
+        assert!(full_skip_tools.is_match("admin_tool"));
+        assert!(full_skip_tools.is_match("tool_dangerous"));
+        assert!(full_skip_tools.is_match("system_critical"));
+        assert!(!full_skip_tools.is_match("safe_tool"));
+        assert_eq!(full_runtime.allowed_hosts.as_ref().unwrap().len(), 2);
+        assert_eq!(full_runtime.allowed_paths.as_ref().unwrap().len(), 2);
+        assert_eq!(full_runtime.env_vars.as_ref().unwrap().len(), 2);
+        assert_eq!(full_runtime.memory_limit.as_ref().unwrap(), "2GB");
     }
 }

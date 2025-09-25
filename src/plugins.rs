@@ -279,11 +279,10 @@ impl ServerHandler for PluginService {
             .runtime_config
             .as_ref()
             .and_then(|rc| rc.skip_tools.clone())
+            && skip_tools.is_match(&tool_name)
         {
-            if skip_tools.iter().any(|s| s == &tool_name) {
-                tracing::info!("Tool {tool_name} in skip_tools");
-                return Err(McpError::method_not_found::<CallToolRequestMethod>());
-            }
+            tracing::warn!("Tool {tool_name} in skip_tools");
+            return Err(McpError::method_not_found::<CallToolRequestMethod>());
         }
 
         let call_payload = json!({
@@ -411,7 +410,7 @@ impl ServerHandler for PluginService {
                             if let Ok(parsed) = serde_json::from_str::<ListToolsResult>(&result) {
                                 for mut tool in parsed.tools {
                                     let tool_name = tool.name.as_ref() as &str;
-                                    if skip_tools.iter().any(|s| s == tool_name) {
+                                    if skip_tools.is_match(tool_name) {
                                         tracing::info!(
                                             "Skipping tool {} as requested in skip_tools",
                                             tool.name
@@ -1196,7 +1195,7 @@ plugins:
             .unwrap();
 
         assert!(
-            skip_tools.contains(&"time".to_string()),
+            skip_tools.is_match(&"time"),
             "Configuration should include 'time' in skip_tools list: {skip_tools:?}"
         );
 

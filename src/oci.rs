@@ -4,7 +4,6 @@ use docker_credential::{CredentialRetrievalError, DockerCredential};
 use flate2::read::GzDecoder;
 use oci_client::Reference;
 use oci_client::{Client, manifest, manifest::OciDescriptor, secrets::RegistryAuth};
-use serde::{Deserialize, Serialize};
 use sigstore::cosign::verification_constraint::cert_subject_email_verifier::StringVerifier;
 use sigstore::cosign::verification_constraint::{
     CertSubjectEmailVerifier, CertSubjectUrlVerifier, VerificationConstraintVec,
@@ -19,33 +18,6 @@ use std::io::Read;
 use std::path::Path;
 use std::str::FromStr;
 use tar::Archive;
-
-// Docker manifest format v2
-#[derive(Debug, Serialize, Deserialize)]
-struct DockerManifest {
-    #[serde(rename = "schemaVersion")]
-    schema_version: u32,
-    #[serde(rename = "mediaType")]
-    media_type: String,
-    config: DockerManifestConfig,
-    layers: Vec<DockerManifestLayer>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct DockerManifestConfig {
-    #[serde(rename = "mediaType")]
-    media_type: String,
-    size: u64,
-    digest: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct DockerManifestLayer {
-    #[serde(rename = "mediaType")]
-    media_type: String,
-    size: u64,
-    digest: String,
-}
 
 fn build_auth(reference: &Reference) -> RegistryAuth {
     let server = reference
