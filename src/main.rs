@@ -6,6 +6,7 @@ use rmcp::transport::streamable_http_server::{
 };
 use rmcp::{ServiceExt, transport::stdio};
 use std::path::PathBuf;
+use tokio::{runtime::Handle, task::block_in_place};
 use tracing_subscriber::{self, EnvFilter};
 
 mod config;
@@ -111,15 +112,16 @@ async fn main() -> Result<()> {
 
     tracing::info!("Starting hyper-mcp server");
 
-    // Create plugin service with the CLI options
-    let plugin_service = plugins::PluginService::new(&cli).await?;
-
     match cli.transport.as_str() {
         "stdio" => {
             tracing::info!("Starting hyper-mcp with stdio transport");
-            let service = plugin_service.serve(stdio()).await.inspect_err(|e| {
-                tracing::error!("Serving error: {:?}", e);
-            })?;
+            let service = plugins::PluginService::new(&cli)
+                .await?
+                .serve(stdio())
+                .await
+                .inspect_err(|e| {
+                    tracing::error!("Serving error: {:?}", e);
+                })?;
             service.waiting().await?;
         }
         "sse" => {
@@ -129,27 +131,43 @@ async fn main() -> Result<()> {
             );
             let ct = SseServer::serve(cli.bind_address.parse()?)
                 .await?
-                .with_service(move || plugin_service.clone());
+                .with_service({
+                    move || {
+                        block_in_place(|| {
+                            Handle::current()
+                                .block_on(async { plugins::PluginService::new(&cli).await })
+                        })
+                        .expect("Failed to create plugin service")
+                    }
+                });
 
             tokio::signal::ctrl_c().await?;
             ct.cancel();
         }
         "streamable-http" => {
+            let bind_address = cli.bind_address.clone();
             tracing::info!(
                 "Starting hyper-mcp with streamable-http transport at {}/mcp",
-                cli.bind_address
+                bind_address
             );
 
             let service = StreamableHttpService::new(
-                move || Ok(plugin_service.clone()),
+                {
+                    move || {
+                        block_in_place(|| {
+                            Handle::current()
+                                .block_on(async { plugins::PluginService::new(&cli).await })
+                        })
+                        .map_err(std::io::Error::other)
+                    }
+                },
                 LocalSessionManager::default().into(),
                 Default::default(),
             );
 
             let router = axum::Router::new().nest_service("/mcp", service);
 
-            let tcp_listener = tokio::net::TcpListener::bind(cli.bind_address).await?;
-            let _ = axum::serve(tcp_listener, router)
+            let _ = axum::serve(tokio::net::TcpListener::bind(bind_address).await?, router)
                 .with_graceful_shutdown(async {
                     tokio::signal::ctrl_c().await.unwrap();
                     tracing::info!("Received Ctrl+C, shutting down hyper-mcp server...");

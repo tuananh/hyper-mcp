@@ -6,11 +6,12 @@ use crate::{
 };
 use anyhow::Result;
 use bytesize::ByteSize;
+use dashmap::{DashMap, Entry};
 use extism::{Manifest, Plugin, Wasm};
 use rmcp::{
     ErrorData as McpError, ServerHandler,
     model::*,
-    service::{NotificationContext, RequestContext, RoleServer},
+    service::{NotificationContext, Peer, RequestContext, RoleServer},
 };
 use serde_json::json;
 use sha2::{Digest, Sha256};
@@ -18,9 +19,9 @@ use std::{
     collections::HashMap,
     fmt,
     str::FromStr,
-    sync::{Arc, Mutex},
+    sync::{Arc, LazyLock, Mutex},
 };
-use tokio::sync::{OnceCell, RwLock};
+use tokio::sync::{OnceCell, RwLock, SetOnce};
 
 #[derive(Debug, Clone)]
 pub struct ToolNameParseError;
@@ -84,8 +85,11 @@ fn check_env_reference(value: &str) -> String {
 #[derive(Clone)]
 pub struct PluginService {
     config: Config,
+    peer: SetOnce<Peer<RoleServer>>,
     plugins: Arc<RwLock<HashMap<PluginName, Arc<Mutex<Plugin>>>>>,
 }
+
+static WASM_CONTENT_CACHE: LazyLock<DashMap<PluginName, Vec<u8>>> = LazyLock::new(DashMap::new);
 
 impl PluginService {
     pub async fn new(cli: &Cli) -> Result<Self> {
@@ -103,6 +107,7 @@ impl PluginService {
 
         let service = Self {
             config: load_config(config_path).await?,
+            peer: SetOnce::new(),
             plugins: Arc::new(RwLock::new(HashMap::new())),
         };
 
@@ -116,104 +121,115 @@ impl PluginService {
         let s3_client: OnceCell<aws_sdk_s3::Client> = OnceCell::new();
 
         for (plugin_name, plugin_cfg) in &self.config.plugins {
-            let wasm_content = match plugin_cfg.url.scheme() {
-                "file" => tokio::fs::read(plugin_cfg.url.path()).await?,
-                "http" => reqwest_client
-                    .get_or_init(|| async { reqwest::Client::new() })
-                    .await
-                    .get(plugin_cfg.url.as_str())
-                    .send()
-                    .await?
-                    .bytes()
-                    .await?
-                    .to_vec(),
-                "https" => reqwest_client
-                    .get_or_init(|| async { reqwest::Client::new() })
-                    .await
-                    .get(plugin_cfg.url.as_str())
-                    .add_auth(&self.config.auths, &plugin_cfg.url)
-                    .send()
-                    .await?
-                    .bytes()
-                    .await?
-                    .to_vec(),
-                "oci" => {
-                    let image_reference = plugin_cfg.url.as_str().strip_prefix("oci://").unwrap();
-                    let target_file_path = "/plugin.wasm";
-                    let mut hasher = Sha256::new();
-                    hasher.update(image_reference);
-                    let hash = hasher.finalize();
-                    let short_hash = &hex::encode(hash)[..7];
-                    let cache_dir = dirs::cache_dir()
-                        .map(|mut path| {
-                            path.push("hyper-mcp");
-                            path
-                        })
-                        .unwrap();
-                    std::fs::create_dir_all(&cache_dir)?;
+            let wasm_content = match WASM_CONTENT_CACHE.entry(plugin_name.clone()) {
+                Entry::Occupied(entry) => entry.get().clone(),
+                Entry::Vacant(entry) => {
+                    let content = match plugin_cfg.url.scheme() {
+                        "file" => tokio::fs::read(plugin_cfg.url.path()).await?,
+                        "http" => reqwest_client
+                            .get_or_init(|| async { reqwest::Client::new() })
+                            .await
+                            .get(plugin_cfg.url.as_str())
+                            .send()
+                            .await?
+                            .bytes()
+                            .await?
+                            .to_vec(),
+                        "https" => reqwest_client
+                            .get_or_init(|| async { reqwest::Client::new() })
+                            .await
+                            .get(plugin_cfg.url.as_str())
+                            .add_auth(&self.config.auths, &plugin_cfg.url)
+                            .send()
+                            .await?
+                            .bytes()
+                            .await?
+                            .to_vec(),
+                        "oci" => {
+                            let image_reference =
+                                plugin_cfg.url.as_str().strip_prefix("oci://").unwrap();
+                            let target_file_path = "/plugin.wasm";
+                            let mut hasher = Sha256::new();
+                            hasher.update(image_reference);
+                            let hash = hasher.finalize();
+                            let short_hash = &hex::encode(hash)[..7];
+                            let cache_dir = dirs::cache_dir()
+                                .map(|mut path| {
+                                    path.push("hyper-mcp");
+                                    path
+                                })
+                                .unwrap();
+                            std::fs::create_dir_all(&cache_dir)?;
 
-                    let local_output_path =
-                        cache_dir.join(format!("{plugin_name}-{short_hash}.wasm"));
-                    let local_output_path = local_output_path.to_str().unwrap();
+                            let local_output_path =
+                                cache_dir.join(format!("{plugin_name}-{short_hash}.wasm"));
+                            let local_output_path = local_output_path.to_str().unwrap();
 
-                    if let Err(e) = pull_and_extract_oci_image(
-                        cli,
-                        oci_client
-                            .get_or_init(|| async {
-                                oci_client::Client::new(oci_client::client::ClientConfig::default())
-                            })
-                            .await,
-                        image_reference,
-                        target_file_path,
-                        local_output_path,
-                    )
-                    .await
-                    {
-                        tracing::error!("Error pulling oci plugin: {e}");
-                        return Err(anyhow::anyhow!("Failed to pull OCI plugin: {e}"));
-                    }
-                    tracing::info!("cache plugin `{plugin_name}` to : {local_output_path}");
-                    tokio::fs::read(local_output_path).await?
-                }
-                "s3" => {
-                    let bucket = plugin_cfg.url.host_str().ok_or_else(|| {
-                        anyhow::anyhow!("S3 URL must have a valid bucket name in the host")
-                    })?;
-                    let key = plugin_cfg.url.path().trim_start_matches('/');
-                    match s3_client
-                        .get_or_init(|| async {
-                            aws_sdk_s3::Client::new(&aws_config::load_from_env().await)
-                        })
-                        .await
-                        .get_object()
-                        .bucket(bucket)
-                        .key(key)
-                        .send()
-                        .await
-                    {
-                        Ok(response) => match response.body.collect().await {
-                            Ok(body) => body.to_vec(),
-                            Err(e) => {
-                                tracing::error!("Failed to collect S3 object body: {e}");
-                                return Err(anyhow::anyhow!(
-                                    "Failed to collect S3 object body: {e}"
-                                ));
+                            if let Err(e) = pull_and_extract_oci_image(
+                                cli,
+                                oci_client
+                                    .get_or_init(|| async {
+                                        oci_client::Client::new(
+                                            oci_client::client::ClientConfig::default(),
+                                        )
+                                    })
+                                    .await,
+                                image_reference,
+                                target_file_path,
+                                local_output_path,
+                            )
+                            .await
+                            {
+                                tracing::error!("Error pulling oci plugin: {e}");
+                                return Err(anyhow::anyhow!("Failed to pull OCI plugin: {e}"));
                             }
-                        },
-                        Err(e) => {
-                            tracing::error!("Failed to get object from S3: {e}");
-                            return Err(anyhow::anyhow!("Failed to get object from S3: {e}"));
+                            tracing::info!("cache plugin `{plugin_name}` to : {local_output_path}");
+                            tokio::fs::read(local_output_path).await?
                         }
-                    }
-                }
-                unsupported => {
-                    tracing::error!("Unsupported plugin URL scheme: {unsupported}");
-                    return Err(anyhow::anyhow!(
-                        "Unsupported plugin URL scheme: {unsupported}"
-                    ));
+                        "s3" => {
+                            let bucket = plugin_cfg.url.host_str().ok_or_else(|| {
+                                anyhow::anyhow!("S3 URL must have a valid bucket name in the host")
+                            })?;
+                            let key = plugin_cfg.url.path().trim_start_matches('/');
+                            match s3_client
+                                .get_or_init(|| async {
+                                    aws_sdk_s3::Client::new(&aws_config::load_from_env().await)
+                                })
+                                .await
+                                .get_object()
+                                .bucket(bucket)
+                                .key(key)
+                                .send()
+                                .await
+                            {
+                                Ok(response) => match response.body.collect().await {
+                                    Ok(body) => body.to_vec(),
+                                    Err(e) => {
+                                        tracing::error!("Failed to collect S3 object body: {e}");
+                                        return Err(anyhow::anyhow!(
+                                            "Failed to collect S3 object body: {e}"
+                                        ));
+                                    }
+                                },
+                                Err(e) => {
+                                    tracing::error!("Failed to get object from S3: {e}");
+                                    return Err(anyhow::anyhow!(
+                                        "Failed to get object from S3: {e}"
+                                    ));
+                                }
+                            }
+                        }
+                        unsupported => {
+                            tracing::error!("Unsupported plugin URL scheme: {unsupported}");
+                            return Err(anyhow::anyhow!(
+                                "Unsupported plugin URL scheme: {unsupported}"
+                            ));
+                        }
+                    };
+                    entry.insert(content.clone());
+                    content
                 }
             };
-
             let mut manifest = Manifest::new([Wasm::data(wasm_content)]);
             if let Some(runtime_cfg) = &plugin_cfg.runtime_config {
                 tracing::info!("runtime_cfg: {runtime_cfg:?}");
@@ -267,13 +283,13 @@ impl PluginService {
 impl ServerHandler for PluginService {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
-            protocol_version: ProtocolVersion::V_2024_11_05,
             server_info: Implementation {
-                icons: None,
                 name: "hyper-mcp".to_string(),
                 title: Some("Hyper MCP".to_string()),
                 version: env!("CARGO_PKG_VERSION").to_string(),
                 website_url: Some("https://github.com/tuananh/hyper-mcp".to_string()),
+
+                ..Default::default()
             },
             capabilities: ServerCapabilities::builder().enable_tools().build(),
 
@@ -512,54 +528,13 @@ impl ServerHandler for PluginService {
         Ok(payload)
     }
 
-    fn initialize(
-        &self,
-        request: InitializeRequestParam,
-        _context: RequestContext<RoleServer>,
-    ) -> impl Future<Output = Result<InitializeResult, McpError>> + Send + '_ {
-        tracing::info!("got initialize request {:?}", request);
-        std::future::ready(Ok(self.get_info()))
-    }
-
-    fn ping(
-        &self,
-        _context: RequestContext<RoleServer>,
-    ) -> impl Future<Output = std::result::Result<(), McpError>> + Send + '_ {
-        tracing::info!("got ping request");
-        std::future::ready(Ok(()))
-    }
-
     fn on_initialized(
         &self,
-        _context: NotificationContext<RoleServer>,
+        context: NotificationContext<RoleServer>,
     ) -> impl Future<Output = ()> + Send + '_ {
-        tracing::info!("got initialized notification");
+        tracing::info!("client initialized");
+        self.peer.set(context.peer).expect("Peer already set");
         std::future::ready(())
-    }
-
-    fn on_cancelled(
-        &self,
-        _notification: CancelledNotificationParam,
-        _context: NotificationContext<RoleServer>,
-    ) -> impl Future<Output = ()> + Send + '_ {
-        std::future::ready(())
-    }
-
-    fn on_progress(
-        &self,
-        _notification: ProgressNotificationParam,
-        _context: NotificationContext<RoleServer>,
-    ) -> impl Future<Output = ()> + Send + '_ {
-        std::future::ready(())
-    }
-
-    fn complete(
-        &self,
-        request: CompleteRequestParam,
-        _context: RequestContext<RoleServer>,
-    ) -> impl Future<Output = std::result::Result<CompleteResult, McpError>> + Send + '_ {
-        tracing::info!("got complete request {:?}", request);
-        std::future::ready(Err(McpError::method_not_found::<CompleteRequestMethod>()))
     }
 }
 
@@ -1015,11 +990,12 @@ plugins:
         };
         let service = PluginService {
             config,
+            peer: SetOnce::new(),
             plugins: Arc::new(RwLock::new(HashMap::new())),
         };
 
         let info = service.get_info();
-        assert_eq!(info.protocol_version, ProtocolVersion::V_2024_11_05);
+        assert_eq!(info.protocol_version, ProtocolVersion::LATEST);
         assert_eq!(info.server_info.name, "hyper-mcp");
         assert!(!info.server_info.version.is_empty());
         assert!(info.capabilities.tools.is_some());
@@ -1244,6 +1220,7 @@ plugins:
         };
         let service = PluginService {
             config,
+            peer: SetOnce::new(),
             plugins: Arc::new(RwLock::new(HashMap::new())),
         };
         let running = create_test_service(service);
@@ -1286,6 +1263,7 @@ plugins:
         };
         let service = PluginService {
             config,
+            peer: SetOnce::new(),
             plugins: Arc::new(RwLock::new(HashMap::new())),
         };
         let running = create_test_service(service);
@@ -1471,6 +1449,7 @@ plugins:
         };
         let service = PluginService {
             config,
+            peer: SetOnce::new(),
             plugins: Arc::new(RwLock::new(HashMap::new())),
         };
 
@@ -1486,12 +1465,13 @@ plugins:
         };
         let service = PluginService {
             config,
+            peer: SetOnce::new(),
             plugins: Arc::new(RwLock::new(HashMap::new())),
         };
 
         // Test server info
         let info = service.get_info();
-        assert_eq!(info.protocol_version, ProtocolVersion::V_2024_11_05);
+        assert_eq!(info.protocol_version, ProtocolVersion::LATEST);
         assert_eq!(info.server_info.name, "hyper-mcp");
     }
 
@@ -1503,6 +1483,7 @@ plugins:
         };
         let service = PluginService {
             config,
+            peer: SetOnce::new(),
             plugins: Arc::new(RwLock::new(HashMap::new())),
         };
 
