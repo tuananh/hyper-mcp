@@ -7,12 +7,13 @@ use rmcp::transport::streamable_http_server::{
 use rmcp::{ServiceExt, transport::stdio};
 use std::path::PathBuf;
 use tokio::{runtime::Handle, task::block_in_place};
-use tracing_subscriber::{self, EnvFilter};
 
 mod config;
 mod https_auth;
+mod logging;
 mod oci;
-mod plugins;
+mod plugin;
+mod service;
 
 pub const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1:3001";
 
@@ -21,14 +22,6 @@ pub const DEFAULT_BIND_ADDRESS: &str = "127.0.0.1:3001";
 struct Cli {
     #[arg(short, long, value_name = "FILE")]
     config_file: Option<PathBuf>,
-
-    #[arg(
-        long = "log-level",
-        value_name = "LEVEL",
-        env = "HYPER_MCP_LOG_LEVEL",
-        default_value = "info"
-    )]
-    log_level: Option<String>,
 
     #[arg(
         long = "transport",
@@ -103,19 +96,12 @@ struct Cli {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    let log_level = cli.log_level.clone().unwrap_or_else(|| "info".to_string());
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env().add_directive(log_level.parse().unwrap()))
-        .with_writer(std::io::stderr)
-        .with_ansi(false)
-        .init();
-
     tracing::info!("Starting hyper-mcp server");
 
     match cli.transport.as_str() {
         "stdio" => {
             tracing::info!("Starting hyper-mcp with stdio transport");
-            let service = plugins::PluginService::new(&cli)
+            let service = service::PluginService::new(&cli)
                 .await?
                 .serve(stdio())
                 .await
@@ -135,7 +121,7 @@ async fn main() -> Result<()> {
                     move || {
                         block_in_place(|| {
                             Handle::current()
-                                .block_on(async { plugins::PluginService::new(&cli).await })
+                                .block_on(async { service::PluginService::new(&cli).await })
                         })
                         .expect("Failed to create plugin service")
                     }
@@ -156,7 +142,7 @@ async fn main() -> Result<()> {
                     move || {
                         block_in_place(|| {
                             Handle::current()
-                                .block_on(async { plugins::PluginService::new(&cli).await })
+                                .block_on(async { service::PluginService::new(&cli).await })
                         })
                         .map_err(std::io::Error::other)
                     }

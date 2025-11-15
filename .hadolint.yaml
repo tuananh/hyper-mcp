@@ -1,0 +1,21 @@
+# Output & failure behavior
+format: tty # default output format
+failure-threshold: warning # default: fail on >= info
+no-color: false
+no-fail: false # exit non-zero when threshold is met
+
+# Rule configuration
+ignored: [] # no rules ignored by default
+override: # no severity overrides by default
+  error: []
+  warning: []
+  info: []
+  style: []
+
+# Labels
+label-schema: {} # no required labels by default
+strict-labels: false # only check labels in schema when true
+
+# Misc
+disable-ignore-pragma: false # allow inline `# hadolint ignore=...`
+trustedRegistries: [] # none by default

@@ -185,7 +185,7 @@ For secure credential management in GCP Cloud Run:
 # Store registry credentials
 gcloud secrets create registry-auth --data-file=- <<< '{"type":"basic","username":"user","password":"pass"}'
 
-# Store API tokens  
+# Store API tokens
 gcloud secrets create api-token --data-file=- <<< '{"type":"token","token":"your-api-token"}'
 ```
 
@@ -193,23 +193,23 @@ gcloud secrets create api-token --data-file=- <<< '{"type":"token","token":"your
 ```hcl
 resource "google_cloud_run_service" "hyper_mcp" {
   # ... existing configuration ...
-  
+
   template {
     spec {
       containers {
         # ... existing container config ...
-        
+
         env {
           name = "CONFIG_FILE"
           value = "/app/config.json"
         }
-        
+
         volume_mounts {
           name       = "secrets"
           mount_path = "/app/secrets"
         }
       }
-      
+
       volumes {
         name = "secrets"
         secret {
@@ -225,7 +225,7 @@ resource "google_cloud_run_service" "hyper_mcp" {
 
 ### Authentication Best Practices
 - **Never include credentials in Docker images or version control**
-- **Use keyring authentication for local development** 
+- **Use keyring authentication for local development**
 - **Use cloud-native secret management for production** (AWS Secrets Manager, GCP Secret Manager, Azure Key Vault)
 - **Rotate credentials regularly and update keyring/secret stores**
 - **Use least-privilege access principles** for service accounts

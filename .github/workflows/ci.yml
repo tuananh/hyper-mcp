@@ -32,7 +32,7 @@ jobs:
       - name: Cache dependencies
         uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2.8.1
         with:
-          workspaces: "., examples/plugins/*"
+          workspaces: "., examples/plugins/v1/*"
 
       - name: Run clippy
         run: cargo clippy -- -D warnings
@@ -46,9 +46,29 @@ jobs:
       - name: Build hyper-mcp
         run: cargo build
 
+      - name: Set up TinyGo
+        uses: acifani/setup-tinygo@v2
+        with:
+          tinygo-version: "0.37.0"
+
       - name: Build example plugins
         run: |
-          for plugin in qr-code hash myip fetch fs; do
+          for plugin in examples/plugins/v{1,2}/*/; do
+            plugin_name=$(basename $plugin)
             echo "Building plugin: $plugin"
-            cargo build --release --target wasm32-wasip1 --manifest-path "examples/plugins/$plugin/Cargo.toml"
+            current_dir="$PWD"
+            cd $plugin
+            case "$plugin_name" in
+              "crypto-price"|"github")
+                # --- Go-based plugins ---
+                GOOS=wasip1 GOARCH=wasm tinygo build -no-debug -panic=trap -scheduler=none -o plugin.wasm
+                ;;
+              "arxiv"|"context7"|"crates-io"|"crypto-price"|"eval-py"|"fetch"|"fs"|"gitlab"|"gomodule"|"hash"|"maven"|"meme-generator"|"myip"|"qdrant"|"qr-code"|"rstime"|"serper"|"think"|"time"|"tool-list-changed")
+                # --- Rust-based plugins ---
+                cargo build --release --target wasm32-wasip1
+                ;;
+              *)
+                echo "Skipping: $plugin_name"
+            esac
+            cd $current_dir
           done

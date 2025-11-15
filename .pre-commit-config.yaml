@@ -1,0 +1,28 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=2000"]
+      - id: check-json
+      - id: check-toml
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+  - repo: https://github.com/backplane/pre-commit-rust-hooks
+    rev: v1.2.1
+    hooks:
+      - id: fmt
+        args: ["--"]
+      - id: check
+      - id: clippy
+        args: ["--", "-D warnings"]
+      - id: test
+        stages: [manual]
+        args: ["--workspace", "--all-features"]
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.14.0
+    hooks:
+      - id: hadolint
+        stages: [manual]
+        args: ["--no-color"]

@@ -528,7 +528,7 @@ skip_tools:
 ```yaml
 skip_tools:
   - "file\\.exe"      # Matches "file.exe" literally (escaped dot)
-  - "script\\?"       # Matches "script?" literally (escaped question mark)  
+  - "script\\?"       # Matches "script?" literally (escaped question mark)
   - "temp\\*data"     # Matches "temp*data" literally (escaped asterisk)
 ```
 
@@ -537,7 +537,7 @@ skip_tools:
 skip_tools:
   - ".*_test"         # Skip all test tools
   - "dev_.*"          # Skip all development tools
-  - "mock_.*"         # Skip all mock tools  
+  - "mock_.*"         # Skip all mock tools
   - ".*_deprecated"   # Skip all deprecated tools
   - "admin_.*"        # Skip all admin tools
   - "debug.*"         # Skip all debug-related tools

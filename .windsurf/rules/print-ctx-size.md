@@ -1,7 +1,7 @@
 ---
 trigger: always_on
-description: 
-globs: 
+description:
+globs:
 ---
 
 # Your rule content

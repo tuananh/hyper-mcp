@@ -135,7 +135,7 @@ pub struct PluginConfig {
     pub runtime_config: Option<RuntimeConfig>,
 }
 
-mod skip_tools_serde {
+mod skip_serde {
     use super::*;
     use serde::{Deserializer, Serializer};
 
@@ -184,8 +184,17 @@ mod skip_tools_serde {
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct RuntimeConfig {
-    // List of tool names to skip loading at runtime.
-    #[serde(with = "skip_tools_serde", default)]
+    // List of prompts to skip loading at runtime.
+    #[serde(with = "skip_serde", default)]
+    pub skip_prompts: Option<RegexSet>,
+    // List of resource templatess to skip loading at runtime.
+    #[serde(with = "skip_serde", default)]
+    pub skip_resource_templates: Option<RegexSet>,
+    // List of resources to skip loading at runtime.
+    #[serde(with = "skip_serde", default)]
+    pub skip_resources: Option<RegexSet>,
+    // List of tools to skip loading at runtime.
+    #[serde(with = "skip_serde", default)]
     pub skip_tools: Option<RegexSet>,
     pub allowed_hosts: Option<Vec<String>>,
     pub allowed_paths: Option<Vec<String>>,
@@ -2219,6 +2228,9 @@ plugins:
     #[test]
     fn test_skip_tools_none() {
         let runtime_config = RuntimeConfig {
+            skip_prompts: None,
+            skip_resource_templates: None,
+            skip_resources: None,
             skip_tools: None,
             allowed_hosts: None,
             allowed_paths: None,
@@ -2323,6 +2335,9 @@ plugins:
         let regex_set = RegexSet::new(&original_patterns).unwrap();
 
         let runtime_config = RuntimeConfig {
+            skip_prompts: None,
+            skip_resource_templates: None,
+            skip_resources: None,
             skip_tools: Some(regex_set),
             allowed_hosts: None,
             allowed_paths: None,

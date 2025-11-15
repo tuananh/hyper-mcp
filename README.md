@@ -124,27 +124,36 @@ You can configure hyper-mcp either globally for all projects or specifically for
 
 We maintain several example plugins to get you started:
 
-- [time](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/time): Get current time and do time calculations (Rust)
-- [qr_code](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/qr-code): Generate QR codes (Rust)
-- [hash](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/hash): Generate various types of hashes (Rust)
-- [myip](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/myip): Get your current IP (Rust)
-- [fetch](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/fetch): Basic webpage fetching (Rust)
-- [crypto_price](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/crypto-price): Get cryptocurrency prices (Go)
-- [fs](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/fs): File system operations (Rust)
-- [github](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/github): GitHub plugin (Go)
-- [eval_py](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/eval-py): Evaluate Python code with RustPython (Rust)
-- [arxiv](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/arxiv): Search & download arXiv papers (Rust)
-- [memory](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/memory): Let you store & retrieve memory, powered by SQLite (Rust)
-- [sqlite](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/sqlite): Interact with SQLite (Rust)
-- [crates-io](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/crates-io): Get crate general information, check crate latest version (Rust)
-- [gomodule](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/gomodule): Get Go modules info, version (Rust)
-- [qdrant](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/qdrant): keeping & retrieving memories to Qdrant vector search engine (Rust)
-- [gitlab](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/gitlab): GitLab plugin (Rust)
-- [meme_generator](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/meme-generator): Meme generator (Rust)
-- [context7](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/context7): Lookup library documentation (Rust)
-- [think](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/think): Think tool(Rust)
-- [maven](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/maven): Maven plugin (Rust)
-- [serper](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/serper): Serper web search plugin (Rust)
+### V1 Plugins
+
+These plugins use the v1 plugin interface. While still supported, new plugins should use the v2 interface.
+
+- [time](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v1/time): Get current time and do time calculations (Rust)
+- [qr_code](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v1/qr-code): Generate QR codes (Rust)
+- [hash](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v1/hash): Generate various types of hashes (Rust)
+- [myip](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v1/myip): Get your current IP (Rust)
+- [fetch](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v1/fetch): Basic webpage fetching (Rust)
+- [crypto_price](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v1/crypto-price): Get cryptocurrency prices (Go)
+- [fs](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v1/fs): File system operations (Rust)
+- [github](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v1/github): GitHub plugin (Go)
+- [eval_py](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v1/eval-py): Evaluate Python code with RustPython (Rust)
+- [arxiv](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v1/arxiv): Search & download arXiv papers (Rust)
+- [memory](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v1/memory): Let you store & retrieve memory, powered by SQLite (Rust)
+- [sqlite](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v1/sqlite): Interact with SQLite (Rust)
+- [crates-io](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v1/crates-io): Get crate general information, check crate latest version (Rust)
+- [gomodule](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v1/gomodule): Get Go modules info, version (Rust)
+- [qdrant](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v1/qdrant): keeping & retrieving memories to Qdrant vector search engine (Rust)
+- [gitlab](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v1/gitlab): GitLab plugin (Rust)
+- [meme_generator](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v1/meme-generator): Meme generator (Rust)
+- [context7](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v1/context7): Lookup library documentation (Rust)
+- [think](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v1/think): Think tool(Rust)
+- [maven](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v1/maven): Maven plugin (Rust)
+- [serper](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v1/serper): Serper web search plugin (Rust)
+
+### V2 Plugins
+These plugins use the v2 plugin interface. New plugins should use this interface.
+
+- [rstime](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins/v2/rstime): Get current time and do time calculations (Rust)
 
 
 ### Community-built plugins
@@ -171,52 +180,7 @@ We maintain several example plugins to get you started:
 
 ## Creating Plugins
 
-1. Install the [XTP CLI](https://docs.xtp.dylibso.com/docs/cli):
-    ```sh
-    curl https://static.dylibso.com/cli/install.sh -s | bash
-    ```
-
-2. Create a new plugin project:
-    ```sh
-    xtp plugin init --schema-file plugin-schema.yaml
-    ```
-    Follow the prompts to set up your plugin. This will create the necessary files and structure.
-
-    For example, if you chose Rust as the language, it will create a `Cargo.toml`, `src/lib.rs` and a `src/pdk.rs` file.
-
-3. Implement your plugin logic in the language appropriate files(s) created (e.g. - `Cargo.toml` and `src/lib.rs` for Rust)
-    For example, if you chose Rust as the language you will need to update the `Cargo.toml` and `src/lib.rs` files.
-
-    Be sure to modify the `.gitignore` that is created for you to allow committing your `Cargo.lock` file.
-
-Check out our [example plugins](https://github.com/tuananh/hyper-mcp/tree/main/examples/plugins) for insight.
-
-To publish a plugin:
-
-```dockerfile
-# example how to build with rust
-FROM rust:1.88-slim AS builder
-
-RUN rustup target add wasm32-wasip1 && \
-    rustup component add rust-std --target wasm32-wasip1 && \
-    cargo install cargo-auditable
-
-WORKDIR /workspace
-COPY . .
-RUN cargo fetch
-RUN cargo auditable build --release --target wasm32-wasip1
-
-FROM scratch
-WORKDIR /
-COPY --from=builder /workspace/target/wasm32-wasip1/release/plugin.wasm /plugin.wasm
-
-```
-
-Then build and push:
-```sh
-docker build -t your-registry/plugin-name .
-docker push your-registry/plugin-name
-```
+For comprehensive instructions on creating plugins, see [CREATING_PLUGINS.md](./CREATING_PLUGINS.md).
 
 ## License
 

@@ -236,18 +236,18 @@ plugins:
         # Exact matches
         - "debug_console"
         - "test_runner"
-        
+
         # Pattern matches
         - "dev_.*"              # All dev tools
         - ".*_test"             # All test tools
         - "temp_.*"             # All temp tools
         - "mock_.*"             # All mock tools
-        
+
         # Advanced patterns
         - "tool_v[0-9]"         # Versioned tools
         - "admin_(user|role)_.*" # Specific admin tools
         - "[0-9]+_backup"       # Numbered backups
-        
+
       allowed_hosts: ["api.example.com"]
       memory_limit: "512Mi"
 ```
@@ -264,7 +264,7 @@ plugins:
         - "deploy_.*"
 
 ---
-# config.prod.yaml  
+# config.prod.yaml
 plugins:
   app_plugin:
     url: "oci://registry.io/app-plugin:latest"
@@ -306,12 +306,12 @@ skip_tools:
   - "debug.*"
   - "dev_.*"
   - ".*_dev"
-  
+
   # Testing tools
   - "test_.*"
   - ".*_test"
   - "mock_.*"
-  
+
   # Administrative tools
   - "admin_.*"
   - "system_.*"
@@ -337,7 +337,7 @@ skip_tools:
    ```yaml
    # This matches only "debug" exactly
    - "debug"
-   
+
    # This matches "debug", "debugger", "debug_tool", etc.
    - "debug.*"
    ```
@@ -346,7 +346,7 @@ skip_tools:
    ```yaml
    # Wrong: Will treat . as wildcard
    - "file.exe"
-   
+
    # Correct: Escapes the literal dot
    - "file\\.exe"
    ```
@@ -399,7 +399,7 @@ These configurations are all valid:
 runtime_config:
   allowed_hosts: ["*"]
 
-# Empty array - no tools skipped  
+# Empty array - no tools skipped
 runtime_config:
   skip_tools: []
 
@@ -424,7 +424,7 @@ skip_tools:
   # Skip tools for specific environments
   - "prod_(?!api_).*"         # Skip prod tools except prod_api_*
   - "test_(?!smoke_).*"       # Skip test tools except smoke tests
-  
+
   # Skip based on naming conventions
   - "[A-Z]{2,}_.*"            # Skip tools starting with 2+ capitals
   - ".*_[0-9]{4}[0-9]{2}[0-9]{2}" # Skip daily-dated tools
@@ -460,7 +460,7 @@ plugins:
     runtime_config:
       skip_tools:
         - *base_skip
-        - *prod_additional  # YAML doesn't support this directly, 
+        - *prod_additional  # YAML doesn't support this directly,
                             # but you can use templating tools
 ```
 
