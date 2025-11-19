@@ -1,23 +1,31 @@
-use crate::Cli;
-use anyhow::anyhow;
+use crate::config::{OciConfig, PluginName};
+use anyhow::{Result, anyhow};
 use docker_credential::{CredentialRetrievalError, DockerCredential};
 use flate2::read::GzDecoder;
-use oci_client::Reference;
-use oci_client::{Client, manifest, manifest::OciDescriptor, secrets::RegistryAuth};
-use sigstore::cosign::verification_constraint::cert_subject_email_verifier::StringVerifier;
-use sigstore::cosign::verification_constraint::{
-    CertSubjectEmailVerifier, CertSubjectUrlVerifier, VerificationConstraintVec,
+use oci_client::{
+    Client, Reference, client::ClientConfig, manifest, manifest::OciDescriptor,
+    secrets::RegistryAuth,
 };
-use sigstore::cosign::{ClientBuilder, CosignCapabilities, verify_constraints};
-use sigstore::errors::SigstoreVerifyConstraintsError;
-use sigstore::registry::{Auth, OciReference};
-use sigstore::trust::sigstore::SigstoreTrustRoot;
-use sigstore::trust::{ManualTrustRoot, TrustRoot};
-use std::fs;
-use std::io::Read;
-use std::path::Path;
-use std::str::FromStr;
+use sha2::{Digest, Sha256};
+use sigstore::{
+    cosign::{
+        ClientBuilder, CosignCapabilities,
+        verification_constraint::{
+            CertSubjectEmailVerifier, CertSubjectUrlVerifier, VerificationConstraintVec,
+            cert_subject_email_verifier::StringVerifier,
+        },
+        verify_constraints,
+    },
+    errors::SigstoreVerifyConstraintsError,
+    registry::{Auth, OciReference},
+    trust::{ManualTrustRoot, TrustRoot, sigstore::SigstoreTrustRoot},
+};
+use std::{fs, io::Read, path::Path, str::FromStr};
 use tar::Archive;
+use tokio::sync::OnceCell;
+use url::Url;
+
+static OCI_CLIENT: OnceCell<Client> = OnceCell::const_new();
 
 fn build_auth(reference: &Reference) -> RegistryAuth {
     let server = reference
@@ -49,15 +57,46 @@ fn build_auth(reference: &Reference) -> RegistryAuth {
     }
 }
 
-async fn setup_trust_repository(cli: &Cli) -> Result<Box<dyn TrustRoot>, anyhow::Error> {
-    if cli.use_sigstore_tuf_data {
+pub async fn load_wasm(url: &Url, config: &OciConfig, plugin_name: &PluginName) -> Result<Vec<u8>> {
+    let image_reference = url.as_str().strip_prefix("oci://").unwrap();
+    let target_file_path = "/plugin.wasm";
+    let mut hasher = Sha256::new();
+    hasher.update(image_reference);
+    let hash = hasher.finalize();
+    let short_hash = &hex::encode(hash)[..7];
+    let cache_dir = dirs::cache_dir()
+        .map(|mut path| {
+            path.push("hyper-mcp");
+            path
+        })
+        .unwrap();
+    std::fs::create_dir_all(&cache_dir)?;
+
+    let local_output_path = cache_dir.join(format!("{plugin_name}-{short_hash}.wasm"));
+    let local_output_path = local_output_path.to_str().unwrap();
+
+    if let Err(e) =
+        pull_and_extract_oci_image(config, image_reference, target_file_path, local_output_path)
+            .await
+    {
+        tracing::error!("Error pulling oci plugin: {e}");
+        return Err(anyhow::anyhow!("Failed to pull OCI plugin: {e}"));
+    }
+    tracing::info!("cache plugin `{plugin_name}` to : {local_output_path}");
+    tokio::fs::read(local_output_path)
+        .await
+        .map_err(|e| e.into())
+}
+
+async fn setup_trust_repository(config: &OciConfig) -> Result<Box<dyn TrustRoot>> {
+    if config.use_sigstore_tuf_data {
         // Use Sigstore TUF data from the official repository
         tracing::info!("Using Sigstore TUF data for verification");
         match SigstoreTrustRoot::new(None).await {
             Ok(repo) => return Ok(Box::new(repo)),
             Err(e) => {
                 tracing::error!("Failed to initialize TUF trust repository: {e}");
-                if !cli.insecure_skip_signature {
+                if !config.insecure_skip_signature {
                     return Err(anyhow!(
                         "Failed to initialize TUF trust repository and signature verification is required"
                     ));
@@ -71,7 +110,7 @@ async fn setup_trust_repository(cli: &Cli) -> Result<Box<dyn TrustRoot>, anyhow:
     let mut data = ManualTrustRoot::default();
 
     // Add Rekor public keys if provided
-    if let Some(rekor_keys_path) = &cli.rekor_pub_keys {
+    if let Some(rekor_keys_path) = &config.rekor_pub_keys {
         if rekor_keys_path.exists() {
             match fs::read(rekor_keys_path) {
                 Ok(content) => {
@@ -89,7 +128,7 @@ async fn setup_trust_repository(cli: &Cli) -> Result<Box<dyn TrustRoot>, anyhow:
     }
 
     // Add Fulcio certificates if provided
-    if let Some(fulcio_certs_path) = &cli.fulcio_certs {
+    if let Some(fulcio_certs_path) = &config.fulcio_certs {
         if fulcio_certs_path.exists() {
             match fs::read(fulcio_certs_path) {
                 Ok(content) => {
@@ -116,11 +155,11 @@ async fn setup_trust_repository(cli: &Cli) -> Result<Box<dyn TrustRoot>, anyhow:
     Ok(Box::new(data))
 }
 
-async fn verify_image_signature(cli: &Cli, image_reference: &str) -> Result<bool, anyhow::Error> {
+async fn verify_image_signature(config: &OciConfig, image_reference: &str) -> Result<bool> {
     tracing::info!("Verifying signature for {image_reference}");
 
     // Set up the trust repository based on CLI arguments
-    let repo = setup_trust_repository(cli).await?;
+    let repo = setup_trust_repository(config).await?;
     let auth = &Auth::Anonymous;
 
     // Create a client builder
@@ -174,8 +213,8 @@ async fn verify_image_signature(cli: &Cli, image_reference: &str) -> Result<bool
     // Build verification constraints based on CLI options
     let mut verification_constraints: VerificationConstraintVec = Vec::new();
 
-    if let Some(cert_email) = &cli.cert_email {
-        let issuer = cli
+    if let Some(cert_email) = &config.cert_email {
+        let issuer = config
             .cert_issuer
             .as_ref()
             .map(|i| StringVerifier::ExactMatch(i.to_string()));
@@ -186,8 +225,8 @@ async fn verify_image_signature(cli: &Cli, image_reference: &str) -> Result<bool
         }));
     }
 
-    if let Some(cert_url) = &cli.cert_url {
-        match cli.cert_issuer.as_ref() {
+    if let Some(cert_url) = &config.cert_url {
+        match config.cert_issuer.as_ref() {
             Some(issuer) => {
                 verification_constraints.push(Box::new(CertSubjectUrlVerifier {
                     url: cert_url.to_string(),
@@ -217,9 +256,8 @@ async fn verify_image_signature(cli: &Cli, image_reference: &str) -> Result<bool
     }
 }
 
-pub async fn pull_and_extract_oci_image(
-    cli: &Cli,
-    client: &Client,
+async fn pull_and_extract_oci_image(
+    config: &OciConfig,
     image_reference: &str,
     target_file_path: &str,
     local_output_path: &str,
@@ -237,9 +275,9 @@ pub async fn pull_and_extract_oci_image(
     let auth = build_auth(&reference);
 
     // Verify the image signature if it's an OCI image and verification is enabled
-    if !cli.insecure_skip_signature {
+    if !config.insecure_skip_signature {
         tracing::info!("Signature verification enabled for {image_reference}");
-        match verify_image_signature(cli, image_reference).await {
+        match verify_image_signature(config, image_reference).await {
             Ok(verified) => {
                 if !verified {
                     return Err(format!(
@@ -255,6 +293,10 @@ pub async fn pull_and_extract_oci_image(
     } else {
         tracing::warn!("Signature verification disabled for {image_reference}");
     }
+
+    let client = OCI_CLIENT
+        .get_or_init(|| async { Client::new(ClientConfig::default()) })
+        .await;
 
     // Accept both OCI and Docker manifest types
     let manifest = client
