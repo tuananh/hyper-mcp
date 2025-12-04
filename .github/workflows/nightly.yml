@@ -10,6 +10,7 @@ env:
 
 jobs:
   build-oci-images:
+    environment: staging
     strategy:
       matrix:
         include:
@@ -98,6 +99,7 @@ jobs:
         run: gh release delete nightly --yes || true
 
   build-nightly-binaries:
+    environment: staging
     needs: prepare-nightly-release
     strategy:
       matrix:
