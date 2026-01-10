@@ -9,7 +9,6 @@ mod wasm;
 
 use anyhow::Result;
 use clap::Parser;
-use rmcp::transport::sse_server::SseServer;
 use rmcp::transport::streamable_http_server::{
     StreamableHttpService, session::local::LocalSessionManager,
 };
@@ -33,26 +32,6 @@ async fn main() -> Result<()> {
                     tracing::error!("Serving error: {:?}", e);
                 })?;
             service.waiting().await?;
-        }
-        "sse" => {
-            tracing::info!(
-                "Starting hyper-mcp with SSE transport at {}",
-                cli.bind_address
-            );
-            let ct = SseServer::serve(cli.bind_address.parse()?)
-                .await?
-                .with_service({
-                    move || {
-                        block_in_place(|| {
-                            Handle::current()
-                                .block_on(async { service::PluginService::new(&config).await })
-                        })
-                        .expect("Failed to create plugin service")
-                    }
-                });
-
-            tokio::signal::ctrl_c().await?;
-            ct.cancel();
         }
         "streamable-http" => {
             let bind_address = cli.bind_address.clone();
