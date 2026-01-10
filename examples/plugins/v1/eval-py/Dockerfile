@@ -1,8 +1,8 @@
-FROM rust:1.88-slim AS builder
+FROM rust:1.92-slim AS builder
 
 RUN rustup target add wasm32-wasip1 && \
     rustup component add rust-std --target wasm32-wasip1 && \
-    cargo install cargo-auditable
+    cargo install cargo-auditable --version 0.7.1
 
 WORKDIR /workspace
 COPY . .
