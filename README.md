@@ -17,6 +17,16 @@
 
 # hyper-mcp
 
+<div align="center">
+
+# ⚠️ **NOTICE: PROJECT TRANSFERRED**
+
+**This project has been transferred to [https://github.com/joseph-wortmann/hyper-mcp](https://github.com/joseph-wortmann/hyper-mcp)**
+
+Please refer to the new repository for the latest updates and contributions.
+
+</div>
+
 A fast, secure MCP server that extends its capabilities through WebAssembly plugins.
 
 ## What is it?
